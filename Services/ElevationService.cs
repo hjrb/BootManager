@@ -67,11 +67,24 @@ public static class ElevationService
     /// </summary>
     /// <remarks>
     /// The original command line arguments are forwarded so that configuration passed on the command
-    /// line survives the restart. This method does not return: the current process exits as soon as the
-    /// elevated one has been launched. If the user declines the authentication prompt, the new process
-    /// never starts and the platform raises an exception, which the caller reports.
+    /// line survives the restart. This method does not return on success: the current process exits as
+    /// soon as the elevated one has been launched.
+    /// <para>
+    /// On Windows, <c>Process.Start</c> with the "runas" verb itself blocks until the UAC prompt is
+    /// answered, and throws if the user declines - so reaching the exit call already proves elevation
+    /// worked. <c>pkexec</c> and <c>osascript</c> behave differently: they return only once their entire
+    /// child process tree has exited, so - unlike UAC - <c>Process.Start</c> returning is not proof that
+    /// authentication even happened yet, let alone succeeded. Both helpers are therefore invoked through
+    /// a shell wrapper that backgrounds the real executable and returns immediately once authentication
+    /// completes, and this method waits for that helper to exit and inspects its exit code before
+    /// deciding whether elevation actually succeeded.
+    /// </para>
     /// </remarks>
-    /// <exception cref="InvalidOperationException">The path of the running executable could not be determined.</exception>
+    /// <exception cref="InvalidOperationException">
+    /// The path of the running executable could not be determined, the helper process could not be
+    /// started, or the helper reported that elevation was not granted (e.g. the password was rejected or
+    /// the user cancelled the prompt).
+    /// </exception>
     /// <exception cref="PlatformNotSupportedException">There is no known way to elevate on this platform.</exception>
     public static void RestartElevated()
     {
@@ -83,45 +96,83 @@ public static class ElevationService
 
         Log.Verbose("Restarting process elevated: {ExePath} {Args}", exePath, string.Join(' ', originalArgs));
 
-        var startInfo = BuildElevatedStartInfo(exePath, originalArgs);
-        Process.Start(startInfo);
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            Process.Start(BuildWindowsElevatedStartInfo(exePath, originalArgs));
+            Environment.Exit(0);
+            return;
+        }
+
+        var startInfo = BuildDetachedElevationStartInfo(exePath, originalArgs);
+        startInfo.RedirectStandardError = true;
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Failed to start the elevation helper process.");
+
+        // Read before WaitForExit: the pipe buffer is small enough that a helper writing a long error
+        // could otherwise deadlock waiting for us to drain it while we wait for it to exit.
+        var stderr = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0)
+        {
+            var detail = string.IsNullOrWhiteSpace(stderr) ? string.Empty : $": {stderr.Trim()}";
+            throw new InvalidOperationException(
+                $"Elevation was not granted (exit code {process.ExitCode}){detail}. "
+                + "This usually means the password was rejected, the prompt was cancelled, or this user "
+                + "account is not configured as an administrator for polkit/sudo.");
+        }
+
         Environment.Exit(0);
     }
 
+    /// <summary>Builds the Windows-specific command that relaunches the application elevated via UAC.</summary>
+    private static ProcessStartInfo BuildWindowsElevatedStartInfo(string exePath, string[] originalArgs)
+    {
+        // The "runas" verb is only honoured by the shell, so UseShellExecute must be true here -
+        // starting the process directly would silently launch it unelevated again.
+        var startInfo = new ProcessStartInfo(exePath) { UseShellExecute = true, Verb = "runas" };
+
+        // ArgumentList quotes each argument correctly, e.g. paths containing spaces.
+        foreach (var arg in originalArgs)
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+
+        return startInfo;
+    }
+
     /// <summary>
-    /// Builds the platform specific command that launches the application with elevated privileges.
+    /// Builds the Linux/macOS command that authenticates and then launches the application elevated,
+    /// detached from the authentication helper so the helper's exit code reports only whether
+    /// authentication succeeded.
     /// </summary>
     /// <remarks>
-    /// Each platform has its own mechanism, and each shows the user a native authentication prompt:
+    /// Each platform has its own authentication mechanism, and each shows the user a native prompt:
     /// <list type="bullet">
-    ///   <item><description>Windows: the "runas" shell verb, which triggers the UAC consent dialog.</description></item>
     ///   <item><description>Linux: <c>pkexec</c>, which shows a graphical polkit prompt.</description></item>
     ///   <item><description>macOS: AppleScript, which shows the standard password dialog.</description></item>
     /// </list>
+    /// Both normally wait for the elevated program to exit before returning, which would hang this
+    /// method for as long as the elevated window stays open. The inner shell command therefore starts
+    /// the real executable detached (backgrounded and reparented away from the helper, stdio closed) and
+    /// returns immediately, so the helper itself only waits for authentication to complete.
     /// </remarks>
-    private static ProcessStartInfo BuildElevatedStartInfo(string exePath, string[] originalArgs)
+    private static ProcessStartInfo BuildDetachedElevationStartInfo(string exePath, string[] originalArgs)
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            // The "runas" verb is only honoured by the shell, so UseShellExecute must be true here -
-            // starting the process directly would silently launch it unelevated again.
-            var startInfo = new ProcessStartInfo(exePath) { UseShellExecute = true, Verb = "runas" };
-
-            // ArgumentList quotes each argument correctly, e.g. paths containing spaces.
-            foreach (var arg in originalArgs)
-            {
-                startInfo.ArgumentList.Add(arg);
-            }
-
-            return startInfo;
-        }
-
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
         {
-            // pkexec <program> [args...]
-            //   Runs the program as root after asking for authentication through polkit. Chosen over
-            //   sudo because sudo expects a terminal to read the password from, which a GUI app has not.
+            // pkexec sh -c 'setsid "$@" </dev/null >/dev/null 2>&1 &' sh <exe> [args...]
+            //   setsid    starts the real executable in a new session so it is not a child that pkexec
+            //             is waiting on.
+            //   "$@" &    backgrounds the real executable so the wrapping "sh -c" returns immediately
+            //             instead of waiting for it to exit.
+            //   redirects detach stdio so pkexec has no open pipe to the elevated app to wait on.
+            // The leading "sh" argument fills $0 inside the script; "$@" then expands to <exe> [args...].
             var startInfo = new ProcessStartInfo("pkexec") { UseShellExecute = false };
+            startInfo.ArgumentList.Add("sh");
+            startInfo.ArgumentList.Add("-c");
+            startInfo.ArgumentList.Add("setsid \"$@\" </dev/null >/dev/null 2>&1 &");
+            startInfo.ArgumentList.Add("sh");
             startInfo.ArgumentList.Add(exePath);
             foreach (var arg in originalArgs)
             {
@@ -133,13 +184,17 @@ public static class ElevationService
 
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
         {
-            // osascript -e 'do shell script "..." with administrator privileges'
+            // osascript -e 'do shell script "nohup ... </dev/null >/dev/null 2>&1 &" with administrator privileges'
             //   -e <script>                     runs the given AppleScript directly.
             //   with administrator privileges   makes macOS show its native password dialog and run
             //                                   the command as root.
+            //   nohup ... &                     backgrounds the real executable (macOS has no setsid),
+            //                                   so the shell command returns as soon as authentication
+            //                                   succeeds instead of waiting for the app to close.
             // The command is a single string interpreted by a shell, so each part is quoted for the
             // shell first and the result is then escaped again for the AppleScript string literal.
-            var shellCommand = string.Join(' ', new[] { exePath }.Concat(originalArgs).Select(ShellQuote));
+            var shellCommand = "nohup " + string.Join(' ', new[] { exePath }.Concat(originalArgs).Select(ShellQuote))
+                + " </dev/null >/dev/null 2>&1 &";
             var appleScript = $"do shell script \"{shellCommand.Replace("\\", "\\\\").Replace("\"", "\\\"")}\" with administrator privileges";
             var startInfo = new ProcessStartInfo("osascript") { UseShellExecute = false };
             startInfo.ArgumentList.Add("-e");
