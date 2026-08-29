@@ -3,10 +3,13 @@
         xmlns:vm="using:BootManager.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        xmlns:conv="using:Avalonia.Data.Converters"
+        xmlns:localConv="using:BootManager.Converters"
+        mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"
         x:Class="BootManager.Views.MainWindow"
         x:DataType="vm:MainViewModel"
         Icon="/Assets/avalonia-logo.ico"
+        Width="640" Height="480"
         Title="BootManager">
 
     <Design.DataContext>
@@ -15,8 +18,57 @@
         <vm:MainViewModel />
     </Design.DataContext>
 
-    <TextBox Text="{Binding Greeting}"
-             HorizontalAlignment="Center"
-             VerticalAlignment="Center" />
+    <Window.Styles>
+        <Style Selector="Border.current">
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="BorderThickness" Value="2" />
+        </Style>
+        <Style Selector="TextBlock.tag">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
+            <Setter Property="Foreground" Value="White" />
+        </Style>
+    </Window.Styles>
+
+    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="12">
+        <TextBlock Grid.Row="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" />
+
+        <ListBox Grid.Row="1"
+                 ItemsSource="{Binding BootEntries}"
+                 SelectedItem="{Binding SelectedEntry}">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Border Padding="8" CornerRadius="4" Classes.current="{Binding IsCurrentDefault}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding Description}" VerticalAlignment="Center" />
+                            <TextBlock Text="Current default" Classes="tag" IsVisible="{Binding IsCurrentDefault}" />
+                            <TextBlock Text="Next boot" Classes="tag" IsVisible="{Binding IsNextBoot}" />
+                        </StackPanel>
+                    </Border>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ProgressBar Grid.Row="2" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0" />
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+            <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+            <Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
+            <Button Content="Open UEFI Setup at Next Boot" Command="{Binding ConfigureFirmwareSetupCommand}" />
+        </StackPanel>
+
+        <Border Grid.Row="0" Grid.RowSpan="4"
+                VerticalAlignment="Bottom"
+                Background="{Binding IsNotificationError, Converter={x:Static localConv:NotificationBrushConverter.Instance}}"
+                IsVisible="{Binding NotificationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
+                Padding="10" Margin="0,0,0,48" CornerRadius="4">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding NotificationMessage}" TextWrapping="Wrap" Foreground="White" />
+                <Button Grid.Column="1" Content="✕" Command="{Binding DismissNotificationCommand}" Background="Transparent" Foreground="White" />
+            </Grid>
+        </Border>
+    </Grid>
 
 </Window>
