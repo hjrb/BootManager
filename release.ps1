@@ -41,15 +41,17 @@ $ErrorActionPreference = 'Stop'
 # git signals failure through the exit code, not through the error stream, so every call has to
 # be checked explicitly.
 function Invoke-Git {
-    param([Parameter(ValueFromRemainingArguments)] [string[]] $Arguments)
+    # Declaring a parameter would make PowerShell bind git's own switches, such as the '-a' of
+    # 'git tag -a', to it; $args keeps them as plain arguments.
+    $gitArgs = $args
 
     # git reports progress on stderr even when it succeeds, which the script-wide 'Stop'
     # preference would otherwise turn into a terminating error.
     $ErrorActionPreference = 'Continue'
 
-    $output = & git @Arguments 2>&1
+    $output = & git @gitArgs 2>&1
     if ($LASTEXITCODE -ne 0) {
-        throw "git $($Arguments -join ' ') failed:`n$output"
+        throw "git $($gitArgs -join ' ') failed:`n$output"
     }
     return ($output | Where-Object { $_ -isnot [System.Management.Automation.ErrorRecord] })
 }
