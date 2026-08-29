@@ -34,8 +34,7 @@
             <Setter Property="Margin" Value="8,4,0,0" />
         </Style>
 
-        <!-- Zebra striping for the diagnostics list. ':nth-child(2n)' matches every second generated
-             row container; a semi-transparent grey is used so it works on both light and dark themes. -->
+        <!-- Zebra striping uses a translucent grey so it works in either system theme. -->
         <Style Selector="ItemsControl.infoRows ContentPresenter:nth-child(2n) > Border">
             <Setter Property="Background" Value="#18808080" />
         </Style>
@@ -94,16 +93,23 @@
             <TabItem Header="System Information">
                 <Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
                     <ScrollViewer Grid.Row="0">
-                        <ItemsControl ItemsSource="{Binding SystemInfo}" Classes="infoRows">
+                        <ItemsControl ItemsSource="{Binding SystemInfoGroups}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Padding="8,5">
-                                        <Grid ColumnDefinitions="110,180,*">
-                                            <SelectableTextBlock Grid.Column="0" Text="{Binding Category}" Classes="infoValue" Opacity="0.6" />
-                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Label}" Classes="infoLabel" />
-                                            <SelectableTextBlock Grid.Column="2" Text="{Binding Value}" Classes="infoValue" />
-                                        </Grid>
-                                    </Border>
+                                    <Expander Header="{Binding Category}" IsExpanded="True" Margin="0,0,0,4">
+                                        <ItemsControl ItemsSource="{Binding Items}" Classes="infoRows">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Padding="8,5">
+                                                        <Grid ColumnDefinitions="180,*">
+                                                            <SelectableTextBlock Grid.Column="0" Text="{Binding Label}" Classes="infoLabel" />
+                                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" Classes="infoValue" />
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Expander>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

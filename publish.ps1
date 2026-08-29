@@ -151,6 +151,13 @@ foreach ($target in $Targets) {
         throw "Publishing target '$target' failed with exit code $LASTEXITCODE."
     }
 
+    # Keep verbose diagnostics for local development, but published builds should retain only
+    # warning, error, and fatal events.
+    $publishedSettingsPath = Join-Path $targetOutput 'appsettings.json'
+    $publishedSettings = Get-Content -Path $publishedSettingsPath -Raw | ConvertFrom-Json
+    $publishedSettings.Serilog.MinimumLevel = 'Warning'
+    $publishedSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $publishedSettingsPath -Encoding utf8
+
     # DebugType=None only suppresses this project's symbols. The native dependencies of the UI
     # framework (Skia, HarfBuzz) ship their own .pdb files, which are copied in regardless and would
     # otherwise account for most of the output size.

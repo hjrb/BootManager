@@ -61,6 +61,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Diagnostic facts about the machine, shown on the system information tab.</summary>
     public ObservableCollection<SystemInfoItem> SystemInfo { get; } = [];
 
+    /// <summary>Diagnostic facts grouped by category for the expandable system information view.</summary>
+    public ObservableCollection<SystemInfoGroup> SystemInfoGroups { get; } = [];
+
     /// <summary>The entry the user has selected in the list, or null while nothing is selected.</summary>
     [ObservableProperty]
     public partial BootEntry? SelectedEntry { get; set; }
@@ -195,6 +198,12 @@ public partial class MainViewModel : ViewModelBase
             foreach (var item in info)
             {
                 SystemInfo.Add(item);
+            }
+
+            SystemInfoGroups.Clear();
+            foreach (var group in info.GroupBy(item => item.Category))
+            {
+                SystemInfoGroups.Add(new SystemInfoGroup(group.Key, group.ToList()));
             }
         });
     }
