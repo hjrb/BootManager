@@ -1,0 +1,28 @@
+# Dependabot opens pull requests when a dependency has a newer version. Everything is
+# grouped and checked monthly, so the repository does not fill up with one pull request
+# per package.
+version: 2
+
+updates:
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3
+    groups:
+      # Avalonia packages must move together; a mixed set of versions does not build.
+      avalonia:
+        patterns: ['Avalonia*']
+      dotnet-libraries:
+        patterns: ['Microsoft.Extensions.*', 'Serilog*', 'CommunityToolkit.*']
+    labels: ['dependencies']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 2
+    groups:
+      actions:
+        patterns: ['*']
+    labels: ['dependencies', 'github-actions']

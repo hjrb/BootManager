@@ -1,0 +1,124 @@
+# Builds the downloadable binaries for every supported platform and publishes them as a
+# GitHub release. Because the account has little storage to spare, the workflow keeps exactly
+# one release: after the new one has been uploaded successfully, all older releases and their
+# tags are deleted.
+#
+# Triggered by pushing a version tag (git tag v1.2.3 && git push origin v1.2.3) or manually
+# from the Actions tab, where the version is entered by hand.
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading v (for example 1.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# Two releases must never run at the same time: the second one would delete the first one's
+# assets while it is still uploading them. Queued runs wait instead of being cancelled.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Creating the release, and deleting the superseded ones, writes to the repository.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The tag is the single source of truth for the version. For a manual run the value
+      # typed into the form takes its place.
+      - name: Determine the version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            version="${{ inputs.version }}"
+          else
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::'$version' is not a version of the form 1.2.3."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      # The same script developers run locally, so a release cannot differ from a local build.
+      # Cross-compiling for Windows and macOS from Linux needs nothing but the target's
+      # runtime package, which NuGet fetches on its own.
+      - name: Publish all targets
+        shell: pwsh
+        run: ./publish.ps1 -Clean -Version '${{ steps.version.outputs.version }}'
+
+      # Zip drops the executable bit, so the platforms whose users have to run the file
+      # directly get a tar archive, which preserves it. Windows gets a zip, which every
+      # Windows machine can open without extra tools.
+      - name: Package the builds
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for target in linux-x64 linux-x64-framework osx-arm64 osx-arm64-framework portable; do
+            chmod +x "publish/$target/BootManager"
+          done
+          for target in win-x64 win-x64-framework portable; do
+            (cd publish && zip -r -q "../dist/BootManager-$VERSION-$target.zip" "$target")
+          done
+          for target in linux-x64 linux-x64-framework osx-arm64 osx-arm64-framework; do
+            tar -czf "dist/BootManager-$VERSION-$target.tar.gz" -C publish "$target"
+          done
+          (cd dist && sha256sum BootManager-* > SHA256SUMS.txt)
+          ls -lh dist
+
+      # --generate-notes lets GitHub assemble the change list from the merged pull requests,
+      # which is exactly what the branch protection rules guarantee to exist.
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "BootManager $TAG" \
+            --generate-notes \
+            dist/*
+
+      # Only reached when the upload above succeeded, so there is always one complete release
+      # left. Removing the tag as well keeps the tag list as short as the release list.
+      - name: Delete superseded releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          # grep reports "no match" when this is the only release, which is not an error here.
+          gh release list --limit 200 --json tagName --jq '.[].tagName' > all-tags.txt
+          grep -vxF "$TAG" all-tags.txt > old-tags.txt || true
+          while read -r old; do
+            [ -n "$old" ] || continue
+            echo "Deleting release $old"
+            gh release delete "$old" --cleanup-tag --yes
+          done < old-tags.txt

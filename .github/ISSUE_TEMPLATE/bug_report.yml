@@ -1,0 +1,57 @@
+name: Bug report
+description: Something does not work the way it should.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not paste firmware dumps, serial numbers, or machine names. This repository
+        is public. If the problem involves a security weakness, follow SECURITY.md instead of
+        opening an issue.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+
+  - type: input
+    id: build
+    attributes:
+      label: Which build?
+      placeholder: 'for example: win-x64 self-contained, v1.2.3'
+    validations:
+      required: true
+
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Where did it happen?
+      options:
+        - Graphical window
+        - Command line
+        - Both
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: >
+        The relevant lines from the `logs` folder next to the executable. Remove anything
+        that identifies your machine before pasting.
+      render: text

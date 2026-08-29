@@ -1,0 +1,52 @@
+# Verifies that every proposed change still compiles before it can be merged into main.
+# Runs on Linux only: the build is cross-platform and Linux runners are the cheapest,
+# which matters because the release workflow already exercises every target platform.
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# The workflow only reads the repository; nothing is published from here.
+permissions:
+  contents: read
+
+# A new push to the same pull request cancels the previous, now outdated run
+# instead of letting both finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up the .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # --locked-mode is deliberately not used: the repository carries no lock file.
+      - name: Restore dependencies
+        run: dotnet restore BootManager.csproj
+
+      # Warnings are promoted to errors so that dead code and nullability problems
+      # cannot accumulate unnoticed in main.
+      - name: Build
+        run: dotnet build BootManager.csproj --configuration Release --no-restore -warnaserror
+
+      # A publish of the platform-neutral target catches packaging problems early,
+      # without spending the time that all seven release targets would take.
+      - name: Smoke-test the publish pipeline
+        run: dotnet publish BootManager.csproj --configuration Release --no-restore -o "${{ runner.temp }}/smoke" /p:DebugType=None

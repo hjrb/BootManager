@@ -1,5 +1,9 @@
 # BootManager
 
+[![CI](https://github.com/hjrb/BootManager/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hjrb/BootManager/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/hjrb/BootManager/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/hjrb/BootManager/actions/workflows/codeql.yml)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 A small cross-platform tool to inspect and change your computer's UEFI boot options.
 
 Use it to pick which operating system starts next, change the one that starts by default, jump straight
@@ -22,7 +26,13 @@ Runs on **Windows**, **Linux** and **macOS**, with both a graphical window and a
 
 ## Installing
 
-Download the build for your system and unpack it anywhere. There is no installer.
+Download the build for your system from the
+[latest release](https://github.com/hjrb/BootManager/releases/latest) and unpack it anywhere. There is
+no installer. Windows builds are `.zip`, Linux and macOS builds are `.tar.gz`.
+
+Only the newest release is kept, so that page always shows the current version. Each release also
+carries a `SHA256SUMS.txt` — see [SECURITY.md](SECURITY.md) for how to check a download before running
+it with administrator rights.
 
 **Nothing to install** — these include everything they need (~48 MB):
 
@@ -42,6 +52,9 @@ Download the build for your system and unpack it anywhere. There is no installer
 | `portable` | Any supported system — one folder that runs everywhere, but the largest download |
 
 If you are unsure, take the first table: those need no .NET installation.
+
+The released `portable` build is produced on Linux, so its launcher is a Linux executable. On Windows
+and macOS, start it with `dotnet BootManager.dll` instead — or take one of the platform builds above.
 
 On Linux and macOS, mark the file as executable once after unpacking:
 
@@ -186,3 +199,23 @@ dotnet run                   # run the window
 
 `publish.ps1` can also build a single target, for example
 `.\publish.ps1 -Targets linux-x64 -Clean`.
+
+---
+
+## Contributing
+
+Bug reports, ideas, and pull requests are welcome. `main` is protected: every change goes through a
+pull request that has to build cleanly and pass static analysis.
+
+Start with [CONTRIBUTING.md](CONTRIBUTING.md). Everyone taking part is expected to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md). Security weaknesses go to [SECURITY.md](SECURITY.md), not to
+the issue tracker.
+
+---
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
+BootManager changes firmware settings and is provided without warranty of any kind. See sections 7 and
+8 of the license.

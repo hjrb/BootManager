@@ -38,6 +38,10 @@
 .PARAMETER Clean
     Delete the output directory before publishing, so no files from an earlier run remain.
 
+.PARAMETER Version
+    Version number stamped into the produced binaries, for example '1.4.0'. Left out, the
+    default version of the project file is used. The release workflow passes the git tag here.
+
 .EXAMPLE
     .\publish.ps1
     Publishes every target into .\publish.
@@ -59,7 +63,10 @@ param(
         'win-x64-framework', 'linux-x64-framework', 'osx-arm64-framework',
         'portable'),
 
-    [switch] $Clean
+    [switch] $Clean,
+
+    [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')]
+    [string] $Version
 )
 
 # Stop at the first error instead of continuing with a half-finished build.
@@ -105,6 +112,10 @@ foreach ($target in $Targets) {
         '-o', $targetOutput,
         '/p:DebugType=None'
     )
+
+    if ($Version) {
+        $arguments += "/p:Version=$Version"
+    }
 
     if ($null -eq $definition.Rid) {
         # No runtime identifier: one set of files that runs on any OS. Packing into a single file is
