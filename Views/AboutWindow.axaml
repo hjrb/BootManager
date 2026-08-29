@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		x:Class="BootManager.Views.AboutWindow"
+		Title="About BootManager"
+		Icon="/Assets/bootmanager.ico"
+		Width="540"
+		SizeToContent="Height"
+		CanResize="False"
+		WindowStartupLocation="CenterOwner">
+
+	<Window.Styles>
+		<Style Selector="WrapPanel > Button">
+			<Setter Property="Margin" Value="0,0,8,8" />
+		</Style>
+	</Window.Styles>
+
+	<StackPanel Margin="20" Spacing="14">
+		<StackPanel Orientation="Horizontal" Spacing="16">
+			<Image Source="/Assets/bootmanager-256.png" Width="72" Height="72" VerticalAlignment="Top" />
+			<StackPanel Spacing="4" VerticalAlignment="Center">
+				<TextBlock Text="BootManager" FontSize="22" FontWeight="Bold" />
+				<!-- Filled in from the assembly metadata; see AboutWindow.axaml.cs. -->
+				<SelectableTextBlock x:Name="VersionText" FontSize="13" />
+				<SelectableTextBlock x:Name="CopyrightText" FontSize="12" Opacity="0.75" />
+			</StackPanel>
+		</StackPanel>
+
+		<TextBlock TextWrapping="Wrap"
+				   Text="Inspect and change UEFI boot options on Windows, Linux and macOS." />
+
+		<Separator />
+
+		<TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.85"
+				   Text="BootManager is open source software under the Apache License 2.0. It redistributes third-party open source components; the notices document lists every one of them together with its licence terms." />
+
+		<WrapPanel>
+			<Button Content="Project on GitHub" Click="OnOpenRepository" />
+			<Button Content="License (Apache-2.0)" Click="OnOpenLicense" />
+			<Button Content="Third-party notices" Click="OnOpenThirdPartyNotices" />
+		</WrapPanel>
+
+		<Button Content="Close" HorizontalAlignment="Right" IsCancel="True" Click="OnClose" />
+	</StackPanel>
+</Window>

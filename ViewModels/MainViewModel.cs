@@ -64,6 +64,15 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>Diagnostic facts grouped by category for the expandable system information view.</summary>
 	public ObservableCollection<SystemInfoGroup> SystemInfoGroups { get; } = [];
 
+	/// <summary>
+	/// The help text of the command line interface, shown verbatim on the "Command Line" tab.
+	/// </summary>
+	/// <remarks>
+	/// Taken from the console code path rather than duplicated here, so the tab cannot fall behind when
+	/// a command is added or reworded.
+	/// </remarks>
+	public string CommandLineHelpText { get; } = CommandLineInterface.GetUsageText();
+
 	/// <summary>The entry the user has selected in the list, or null while nothing is selected.</summary>
 	[ObservableProperty]
 	public partial BootEntry? SelectedEntry { get; set; }
