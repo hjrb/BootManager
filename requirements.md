@@ -16,6 +16,28 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
 7. If the application is not running with Administrator/sudo (root) privileges, tell the user and
    offer to restart the application elevated (Administrator on Windows, sudo/root on Linux/macOS).
 8. Allow the user to set the **default** boot item (in addition to setting the next boot item).
+9. Provide an option to show boot related system information - everything a user would want to know or
+   would need in order to troubleshoot a boot problem. At minimum:
+   - Firmware: vendor, version, release date, UEFI vs. legacy BIOS mode, UEFI specification version.
+   - Security: Secure Boot state.
+   - Hardware: manufacturer, model, mainboard.
+   - Timing: last boot time, current uptime, and the duration of the last boot (broken down into
+     firmware/loader/kernel/userspace where the platform provides it).
+   - Platform quirks relevant to dual boot troubleshooting, e.g. Windows "Fast Startup" (hiberboot),
+     which leaves the disk in a hibernated state and is a frequent cause of dual-boot problems.
+   - The information must be refreshable and copyable, so it can be pasted into a bug report.
+10. Expose a command line interface with the following commands, each printing its result to the console:
+    | Command | Purpose |
+    | --- | --- |
+    | `list` | List the available boot entries. |
+    | `setnext <id>` | Set the entry used for the next boot only. |
+    | `setdef <id>` | Set the persistent default boot entry. |
+    | `bootUEFI` | Configure the system to open UEFI setup at the next boot. |
+    | `info` | Print the boot related system information. |
+
+    When a CLI command is invoked without Administrator/root privileges the application must simply
+    fail with an error message and a non-zero exit code - it must **not** try to re-launch itself
+    elevated, since that would detach from the console and lose the output.
 
 ### Default boot item vs. next boot item
 These are two distinct UEFI concepts and the UI must keep them clearly separated:
@@ -47,22 +69,40 @@ of the default (persistent startup disk).
   - Successful user-initiated changes logged at Information.
 - Any exception must be caught and reported to the user via a non-modal message (not a blocking dialog).
 - Error message text must be selectable and copyable to the clipboard.
+- Code must be documented so that a developer who is not a C# expert can understand it:
+  - Proper XML documentation comments on all public methods and types.
+  - Document purpose, intention, and the background reasoning/assumptions behind the implementation.
+  - Explain command line options of every external process that is invoked, and the meaning of the
+    native APIs, flags and exit codes involved.
+  - This standard is enforced for AI-assisted edits via
+    `.github/instructions/csharp-comments.instructions.md` (applies to `**/*.cs`).
+
+## Delivery
+- A PowerShell script (`publish.ps1`) must produce release builds, each into its own subfolder:
+  Windows x64, Linux x64, macOS ARM, and a portable build that runs on all supported operating systems.
+  The three platform builds are self-contained single-file binaries (no .NET installation required);
+  the portable build is framework-dependent and needs the .NET runtime.
+- A brief `README.md` must explain to end users how to use the tool.
 
 ## Implementation Notes
 - Avalonia MVVM app (`BootManager.csproj`), NuGet packages: `Microsoft.Extensions.Configuration*`,
   `Serilog` + `Serilog.Sinks.File` + `Serilog.Settings.Configuration`.
-- `Services/IBootManagerService` abstracts enumeration, setting next boot, and requesting firmware setup,
-  with platform implementations selected by `BootManagerServiceFactory`:
+- `Services/IBootManagerService` abstracts enumeration, setting the next boot entry, setting the default
+  boot entry, and requesting firmware setup, with platform implementations selected by
+  `BootManagerServiceFactory`:
   - Windows: `bcdedit.exe /enum firmware` (enumerate/parse), `bcdedit.exe /set {fwbootmgr} bootsequence`
-    (one-time next boot), and the UEFI `OsIndications` firmware variable set via
+    (one-time next boot), `bcdedit.exe /set {fwbootmgr} displayorder <id> /addfirst` (default boot),
+    and the UEFI `OsIndications` firmware variable set via
     `SetFirmwareEnvironmentVariableW` (request firmware setup on next boot). Requires admin rights.
     `shutdown.exe /r /fw` is intentionally avoided - it fails with ERROR_ENVVAR_NOT_FOUND (203) and hides
     the real cause; setting `OsIndications` directly also avoids forcing an immediate reboot and lets the
     app check `OsIndicationsSupported` first to report unsupported firmware clearly.
   - Linux: `efibootmgr -v` (enumerate/parse), `efibootmgr -n <id>` (one-time next boot via BootNext),
+    `efibootmgr -o <ids>` (default boot, by moving the entry to the front of BootOrder),
     `systemctl reboot --firmware-setup` (reboot into firmware setup). Requires root.
   - macOS: `diskutil list` / `bless --getBoot` (enumerate), `bless --device /dev/<id> --setBoot`
-    (persistent startup disk selection - no true one-time boot on macOS). Requesting firmware setup is
+    (persistent startup disk selection - no true one-time boot on macOS, so "next boot" and "default"
+    map to the same operation). Requesting firmware setup is
     **not supported** on macOS (no scriptable equivalent); the app surfaces this as an error message.
 - Logging configured via Serilog reading from `appsettings.json` (`Serilog` section), rolling daily,
   size-limited, retaining 14 files.

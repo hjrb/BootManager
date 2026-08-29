@@ -30,9 +30,12 @@
             <Setter Property="Background" Value="{DynamicResource SystemAccentColor}" />
             <Setter Property="Foreground" Value="White" />
         </Style>
+        <Style Selector="WrapPanel > Button">
+            <Setter Property="Margin" Value="8,4,0,0" />
+        </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
         <TextBlock Grid.Row="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" />
 
         <Border Grid.Row="1" IsVisible="{Binding !IsElevated}"
@@ -43,31 +46,60 @@
             </Grid>
         </Border>
 
-        <ListBox Grid.Row="2"
-                 ItemsSource="{Binding BootEntries}"
-                 SelectedItem="{Binding SelectedEntry}">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Border Padding="8" CornerRadius="4" Classes.current="{Binding IsCurrentDefault}">
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="{Binding Description}" VerticalAlignment="Center" />
-                            <TextBlock Text="Current default" Classes="tag" IsVisible="{Binding IsCurrentDefault}" />
-                            <TextBlock Text="Next boot" Classes="tag" IsVisible="{Binding IsNextBoot}" />
-                        </StackPanel>
-                    </Border>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
+        <TabControl Grid.Row="2">
+            <TabItem Header="Boot Options">
+                <Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
+                    <ListBox Grid.Row="0"
+                             ItemsSource="{Binding BootEntries}"
+                             SelectedItem="{Binding SelectedEntry}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="8" CornerRadius="4" Classes.current="{Binding IsCurrentDefault}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Description}" VerticalAlignment="Center" />
+                                        <TextBlock Text="Current default" Classes="tag" IsVisible="{Binding IsCurrentDefault}" />
+                                        <TextBlock Text="Next boot" Classes="tag" IsVisible="{Binding IsNextBoot}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="Refresh" Command="{Binding RefreshCommand}" />
+                        <Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="One-time override: applies to the next boot only, then reverts to the default." />
+                        <Button Content="Set as Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="Persistent: applies to every boot until changed again." />
+                        <Button Content="Open UEFI Setup at Next Boot" Command="{Binding ConfigureFirmwareSetupCommand}" />
+                    </WrapPanel>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="System Information">
+                <Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
+                    <ScrollViewer Grid.Row="0">
+                        <ItemsControl ItemsSource="{Binding SystemInfo}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid ColumnDefinitions="200,*" Margin="4,3">
+                                        <SelectableTextBlock Grid.Column="0" Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">
+                        <Button Content="Refresh" Command="{Binding RefreshSystemInfoCommand}" />
+                        <Button Content="Copy All" Click="OnCopySystemInfo" ToolTip.Tip="Copies all values as text, ready to paste into a bug report." />
+                    </WrapPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <ProgressBar Grid.Row="3" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0" />
 
-        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
-            <Button Content="Refresh" Command="{Binding RefreshCommand}" />
-            <Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
-            <Button Content="Open UEFI Setup at Next Boot" Command="{Binding ConfigureFirmwareSetupCommand}" />
-        </StackPanel>
-
-        <Border Grid.Row="0" Grid.RowSpan="5"
+        <Border Grid.Row="0" Grid.RowSpan="4"
                 VerticalAlignment="Bottom"
                 Background="{Binding IsNotificationError, Converter={x:Static localConv:NotificationBrushConverter.Instance}}"
                 IsVisible="{Binding NotificationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
