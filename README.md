@@ -24,12 +24,24 @@ Runs on **Windows**, **Linux** and **macOS**, with both a graphical window and a
 
 Download the build for your system and unpack it anywhere. There is no installer.
 
-| Folder | For | Notes |
-| --- | --- | --- |
-| `win-x64` | Windows 64-bit | Single `BootManager.exe`, nothing to install |
-| `linux-x64` | Linux 64-bit | Single `BootManager` binary, nothing to install |
-| `osx-arm64` | macOS on Apple Silicon | Single `BootManager` binary, nothing to install |
-| `portable` | Any supported system | Smaller download, but needs the .NET runtime installed |
+**Nothing to install** — these include everything they need (~48 MB):
+
+| Folder | For |
+| --- | --- |
+| `win-x64` | Windows 64-bit |
+| `linux-x64` | Linux 64-bit |
+| `osx-arm64` | macOS on Apple Silicon |
+
+**Smaller, but needs the [.NET 10 runtime](https://dotnet.microsoft.com/download) installed** (~25-31 MB):
+
+| Folder | For |
+| --- | --- |
+| `win-x64-framework` | Windows 64-bit |
+| `linux-x64-framework` | Linux 64-bit |
+| `osx-arm64-framework` | macOS on Apple Silicon |
+| `portable` | Any supported system — one folder that runs everywhere, but the largest download |
+
+If you are unsure, take the first table: those need no .NET installation.
 
 On Linux and macOS, mark the file as executable once after unpacking:
 

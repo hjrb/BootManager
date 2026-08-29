@@ -79,9 +79,12 @@ of the default (persistent startup disk).
 
 ## Delivery
 - A PowerShell script (`publish.ps1`) must produce release builds, each into its own subfolder:
-  Windows x64, Linux x64, macOS ARM, and a portable build that runs on all supported operating systems.
-  The three platform builds are self-contained single-file binaries (no .NET installation required);
-  the portable build is framework-dependent and needs the .NET runtime.
+  - Self-contained single-file builds (no .NET installation required) for Windows x64, Linux x64
+    and macOS ARM.
+  - Framework-dependent single-file builds (smaller, require the .NET runtime) for the same three
+    platforms.
+  - A portable framework-dependent build without a runtime identifier that runs on all supported
+    operating systems.
 - A brief `README.md` must explain to end users how to use the tool.
 
 ## Implementation Notes

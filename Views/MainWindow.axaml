@@ -33,6 +33,22 @@
         <Style Selector="WrapPanel > Button">
             <Setter Property="Margin" Value="8,4,0,0" />
         </Style>
+
+        <!-- Zebra striping for the diagnostics list. ':nth-child(2n)' matches every second generated
+             row container; a semi-transparent grey is used so it works on both light and dark themes. -->
+        <Style Selector="ItemsControl.infoRows ContentPresenter:nth-child(2n) > Border">
+            <Setter Property="Background" Value="#18808080" />
+        </Style>
+        <Style Selector="SelectableTextBlock.infoLabel">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+        </Style>
+        <Style Selector="SelectableTextBlock.infoValue">
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="VerticalAlignment" Value="Top" />
+            <Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
+        </Style>
     </Window.Styles>
 
     <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
@@ -77,13 +93,16 @@
             <TabItem Header="System Information">
                 <Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
                     <ScrollViewer Grid.Row="0">
-                        <ItemsControl ItemsSource="{Binding SystemInfo}">
+                        <ItemsControl ItemsSource="{Binding SystemInfo}" Classes="infoRows">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid ColumnDefinitions="200,*" Margin="4,3">
-                                        <SelectableTextBlock Grid.Column="0" Text="{Binding Label}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                        <SelectableTextBlock Grid.Column="1" Text="{Binding Value}" TextWrapping="Wrap" />
-                                    </Grid>
+                                    <Border Padding="8,5">
+                                        <Grid ColumnDefinitions="110,180,*">
+                                            <SelectableTextBlock Grid.Column="0" Text="{Binding Category}" Classes="infoValue" Opacity="0.6" />
+                                            <SelectableTextBlock Grid.Column="1" Text="{Binding Label}" Classes="infoLabel" />
+                                            <SelectableTextBlock Grid.Column="2" Text="{Binding Value}" Classes="infoValue" />
+                                        </Grid>
+                                    </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

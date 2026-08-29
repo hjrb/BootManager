@@ -3,17 +3,27 @@
     Publishes release builds of BootManager for every supported operating system.
 
 .DESCRIPTION
-    Produces one subfolder per target under the output directory:
+    Produces one subfolder per target under the output directory.
 
-        win-x64      Windows 64-bit, self-contained single file
-        linux-x64    Linux 64-bit, self-contained single file
-        osx-arm64    macOS on Apple Silicon, self-contained single file
-        portable     Framework-dependent build that runs on any supported OS,
-                     but requires the matching .NET runtime to be installed
+    Self-contained builds bundle the .NET runtime, so the user has to install nothing.
+    Each is a single executable of roughly 50 MB.
 
-    The three platform builds are self-contained, so the .NET runtime is bundled and
-    users do not have to install anything. That makes them considerably larger, which is
-    why the small portable build is produced as well.
+        win-x64                Windows 64-bit
+        linux-x64              Linux 64-bit
+        osx-arm64              macOS on Apple Silicon
+
+    Framework-dependent builds require a matching .NET runtime to be installed, but are
+    only a few megabytes. They are single executables as well.
+
+        win-x64-framework      Windows 64-bit
+        linux-x64-framework    Linux 64-bit
+        osx-arm64-framework    macOS on Apple Silicon
+
+    The portable build is framework-dependent and carries no runtime identifier, so the
+    same folder runs on any supported operating system. It cannot be packed into a single
+    file and ships the native libraries for every platform, making it the largest output.
+
+        portable               Any supported operating system
 
     Publishing for macOS and Linux works from Windows: the compiler only needs the
     target's runtime package, which NuGet downloads automatically. No Mac or Linux
@@ -33,21 +43,41 @@
     Publishes every target into .\publish.
 
 .EXAMPLE
-    .\publish.ps1 -Targets win-x64 -OutputPath C:\builds -Clean
-    Publishes only the Windows build into C:\builds, after emptying that folder.
+    .\publish.ps1 -Targets win-x64, win-x64-framework -OutputPath C:\builds -Clean
+    Publishes both Windows variants into C:\builds, after emptying that folder.
 #>
 [CmdletBinding()]
 param(
     [string] $OutputPath = (Join-Path $PSScriptRoot 'publish'),
 
-    [ValidateSet('win-x64', 'linux-x64', 'osx-arm64', 'portable')]
-    [string[]] $Targets = @('win-x64', 'linux-x64', 'osx-arm64', 'portable'),
+    [ValidateSet(
+        'win-x64', 'linux-x64', 'osx-arm64',
+        'win-x64-framework', 'linux-x64-framework', 'osx-arm64-framework',
+        'portable')]
+    [string[]] $Targets = @(
+        'win-x64', 'linux-x64', 'osx-arm64',
+        'win-x64-framework', 'linux-x64-framework', 'osx-arm64-framework',
+        'portable'),
 
     [switch] $Clean
 )
 
 # Stop at the first error instead of continuing with a half-finished build.
 $ErrorActionPreference = 'Stop'
+
+# What each target folder name actually builds.
+#   Rid            runtime identifier passed to '-r', or $null for a platform-neutral build.
+#   SelfContained  whether the .NET runtime is bundled into the output.
+# Ordered so the summary table lists the targets in a predictable sequence.
+$targetDefinitions = [ordered]@{
+    'win-x64'             = @{ Rid = 'win-x64';   SelfContained = $true }
+    'linux-x64'           = @{ Rid = 'linux-x64'; SelfContained = $true }
+    'osx-arm64'           = @{ Rid = 'osx-arm64'; SelfContained = $true }
+    'win-x64-framework'   = @{ Rid = 'win-x64';   SelfContained = $false }
+    'linux-x64-framework' = @{ Rid = 'linux-x64'; SelfContained = $false }
+    'osx-arm64-framework' = @{ Rid = 'osx-arm64'; SelfContained = $false }
+    'portable'            = @{ Rid = $null;       SelfContained = $false }
+}
 
 $projectPath = Join-Path $PSScriptRoot 'BootManager.csproj'
 if (-not (Test-Path $projectPath)) {
@@ -62,6 +92,7 @@ if ($Clean -and (Test-Path $OutputPath)) {
 $results = [System.Collections.Generic.List[object]]::new()
 
 foreach ($target in $Targets) {
+    $definition = $targetDefinitions[$target]
     $targetOutput = Join-Path $OutputPath $target
 
     # Arguments common to every target.
@@ -75,31 +106,45 @@ foreach ($target in $Targets) {
         '/p:DebugType=None'
     )
 
-    if ($target -eq 'portable') {
-        # No runtime identifier: one set of files that runs on any OS, but the user must have
-        # the .NET runtime installed.
-        Write-Host "Publishing portable (framework-dependent) build..." -ForegroundColor Cyan
+    if ($null -eq $definition.Rid) {
+        # No runtime identifier: one set of files that runs on any OS. Packing into a single file is
+        # not possible here, because producing an executable requires knowing the target platform.
+        $kind = 'portable, runtime required'
     }
     else {
         # -r <rid>                        the runtime identifier of the target platform.
-        # --self-contained true           bundles the .NET runtime so nothing must be installed.
         # /p:PublishSingleFile=true       packs the output into one executable.
         # /p:IncludeNativeLibrariesForSelfExtract=true
         #                                 also embeds the native libraries Avalonia needs, so the
         #                                 single file really is the only file required.
-        # /p:EnableCompressionInSingleFile=true
-        #                                 compresses the bundle, which roughly halves its size at
-        #                                 the cost of a slightly slower first start.
-        Write-Host "Publishing $target (self-contained single file)..." -ForegroundColor Cyan
         $arguments += @(
-            '-r', $target,
-            '--self-contained', 'true',
+            '-r', $definition.Rid,
             '/p:PublishSingleFile=true',
-            '/p:IncludeNativeLibrariesForSelfExtract=true',
-            '/p:EnableCompressionInSingleFile=true'
+            '/p:IncludeNativeLibrariesForSelfExtract=true'
         )
+
+        if ($definition.SelfContained) {
+            # --self-contained true             bundles the .NET runtime so nothing must be installed.
+            # /p:EnableCompressionInSingleFile=true
+            #                                   compresses the bundle, roughly halving its size at the
+            #                                   cost of a slightly slower first start. Only worthwhile
+            #                                   for self-contained builds, where the embedded runtime
+            #                                   accounts for nearly all of the size.
+            $arguments += @(
+                '--self-contained', 'true',
+                '/p:EnableCompressionInSingleFile=true'
+            )
+            $kind = 'self-contained'
+        }
+        else {
+            # The application is compiled against the shared runtime, which must already be present
+            # on the user's machine. The output keeps the native libraries for this platform only.
+            $arguments += @('--self-contained', 'false')
+            $kind = 'runtime required'
+        }
     }
 
+    Write-Host "Publishing $target ($kind)..." -ForegroundColor Cyan
     & dotnet @arguments
 
     if ($LASTEXITCODE -ne 0) {
@@ -117,6 +162,7 @@ foreach ($target in $Targets) {
 
     $results.Add([pscustomobject]@{
         Target = $target
+        Kind   = $kind
         Output = $targetOutput
         SizeMB = $sizeMb
     })
