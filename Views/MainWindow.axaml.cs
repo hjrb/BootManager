@@ -40,6 +40,19 @@ public partial class MainWindow : Window
 		}
 	}
 
+	/// <summary>Copies the command line help, so it can be pasted into a terminal or a note.</summary>
+	private async void OnCopyCommandLineHelp(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is MainViewModel viewModel)
+		{
+			await CopyAsync(viewModel.CommandLineHelpText);
+		}
+	}
+
+	/// <summary>Shows the About dialog with the version and the licence information.</summary>
+	private async void OnAboutButtonClick(object? sender, RoutedEventArgs e) =>
+		await new AboutWindow().ShowDialog(this);
+
 	/// <summary>
 	/// Writes text to the system clipboard, ignoring the case where no clipboard is available
 	/// (which can happen on a headless or unusual desktop session).

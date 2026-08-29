@@ -8,7 +8,7 @@
 		mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"
 		x:Class="BootManager.Views.MainWindow"
 		x:DataType="vm:MainViewModel"
-		Icon="/Assets/avalonia-logo.ico"
+		Icon="/Assets/bootmanager.ico"
 		Width="640" Height="480"
 		Title="BootManager">
 
@@ -48,10 +48,19 @@
 			<Setter Property="VerticalAlignment" Value="Top" />
 			<Setter Property="FontFamily" Value="{StaticResource ContentControlThemeFontFamily}" />
 		</Style>
+		<!-- The command line help is laid out with spaces, so it only lines up in a monospaced font.
+			 The list is a fallback chain: the first family present on the system wins. -->
+		<Style Selector="SelectableTextBlock.console">
+			<Setter Property="FontFamily" Value="Cascadia Mono,Consolas,Menlo,DejaVu Sans Mono,monospace" />
+			<Setter Property="FontSize" Value="13" />
+		</Style>
 	</Window.Styles>
 
 	<Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
-		<TextBlock Grid.Row="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" />
+		<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
+			<TextBlock Grid.Column="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+			<Button Grid.Column="1" Content="About" Click="OnAboutButtonClick" ToolTip.Tip="Version, licence and third-party notices." />
+		</Grid>
 
 		<Border Grid.Row="1" IsVisible="{Binding !IsElevated}"
 				Background="Goldenrod" Padding="10" CornerRadius="4" Margin="0,0,0,8">
@@ -118,6 +127,19 @@
 					<WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">
 						<Button Content="Refresh" Command="{Binding RefreshSystemInfoCommand}" />
 						<Button Content="Copy All" Click="OnCopySystemInfo" ToolTip.Tip="Copies all values as text, ready to paste into a bug report." />
+					</WrapPanel>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Command Line">
+				<Grid RowDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+					<TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8"
+							   Text="The same executable also works without a window. Started with one of these commands it prints its result to the console and exits, which makes it usable from scripts." />
+					<ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto">
+						<SelectableTextBlock Classes="console" Text="{Binding CommandLineHelpText}" Padding="4" />
+					</ScrollViewer>
+					<WrapPanel Grid.Row="2" HorizontalAlignment="Right" Margin="0,8,0,0">
+						<Button Content="Copy" Click="OnCopyCommandLineHelp" ToolTip.Tip="Copies the help text as shown by 'BootManager help'." />
 					</WrapPanel>
 				</Grid>
 			</TabItem>

@@ -8,11 +8,25 @@
 	<Nullable>enable</Nullable>
 	<ImplicitUsings>enable</ImplicitUsings>
 	<ApplicationManifest>app.manifest</ApplicationManifest>
+	<!-- Icon compiled into the Windows executable, so Explorer and the taskbar show it as well. -->
+	<ApplicationIcon>Assets\bootmanager.ico</ApplicationIcon>
+
+	<!-- Read back at runtime by AppInfo for the About window. The release workflow overrides
+		 Version with the git tag; this value is the fallback for local builds. -->
+	<Product>BootManager</Product>
+	<Version>1.0.0</Version>
+	<Copyright>Copyright 2026 BootManager contributors</Copyright>
   </PropertyGroup>
 
   <ItemGroup>
 	<AvaloniaResource Include="Assets\**" />
 	<None Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+	<!-- Licence documents are part of the deliverable: the Apache-2.0 licence of this program and
+		 the notices for the third-party packages it redistributes. The About window links to the
+		 copies that end up next to the executable. -->
+	<None Include="LICENSE" CopyToOutputDirectory="PreserveNewest" />
+	<None Include="NOTICE" CopyToOutputDirectory="PreserveNewest" />
+	<None Include="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

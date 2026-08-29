@@ -232,28 +232,39 @@ public static class CommandLineInterface
 		return ExitSuccess;
 	}
 
+	/// <summary>
+	/// Returns the list of commands and their meaning, as printed by the <c>help</c> command.
+	/// </summary>
+	/// <remarks>
+	/// Produced as one string instead of being written directly to the console, because the window
+	/// shows the very same text on its "Command Line" tab. Keeping a single source avoids the usual
+	/// drift where a new command is documented in one place only. The layout assumes a monospaced
+	/// font, which the tab sets explicitly.
+	/// </remarks>
+	public static string GetUsageText() =>
+		$"""
+		BootManager - inspect and change UEFI boot options.
+
+		Usage: BootManager [command] [arguments]
+
+		Commands:
+		  list             List the available boot entries with their ids.
+		  setnext <id>     Boot the given entry on the next start only, then revert to the default.
+		  setdef <id>      Make the given entry the permanent default.
+		  bootUEFI         Open the UEFI firmware setup on the next boot.
+		  info             Print boot related system information as JSON.
+		  disableFastStartup
+		                   Windows only: turn off Fast Startup, so a shutdown really powers off.
+		  reboot           Reboot the machine immediately.
+		  shutdown         Shut down the machine immediately.
+		  help             Show this text.
+
+		Start without a command to open the graphical interface.
+		All commands except 'help' require {ElevationService.RequiredPrivilegeName} privileges.
+		""";
+
 	/// <summary>Prints the list of commands and their meaning.</summary>
-	private static void PrintUsage()
-	{
-		Console.WriteLine("BootManager - inspect and change UEFI boot options.");
-		Console.WriteLine();
-		Console.WriteLine("Usage: BootManager [command] [arguments]");
-		Console.WriteLine();
-		Console.WriteLine("Commands:");
-		Console.WriteLine("  list             List the available boot entries with their ids.");
-		Console.WriteLine("  setnext <id>     Boot the given entry on the next start only, then revert to the default.");
-		Console.WriteLine("  setdef <id>      Make the given entry the permanent default.");
-		Console.WriteLine("  bootUEFI         Open the UEFI firmware setup on the next boot.");
-		Console.WriteLine("  info             Print boot related system information as JSON.");
-		Console.WriteLine("  disableFastStartup");
-		Console.WriteLine("                   Windows only: turn off Fast Startup, so a shutdown really powers off.");
-		Console.WriteLine("  reboot           Reboot the machine immediately.");
-		Console.WriteLine("  shutdown         Shut down the machine immediately.");
-		Console.WriteLine("  help             Show this text.");
-		Console.WriteLine();
-		Console.WriteLine("Start without a command to open the graphical interface.");
-		Console.WriteLine($"All commands except 'help' require {ElevationService.RequiredPrivilegeName} privileges.");
-	}
+	private static void PrintUsage() => Console.WriteLine(GetUsageText());
 
 	/// <summary>Guards the switch expression; <see cref="IsCommandLineInvocation"/> already filtered the input.</summary>
 	private static int Unreachable() => throw new InvalidOperationException("Unrecognised command.");
