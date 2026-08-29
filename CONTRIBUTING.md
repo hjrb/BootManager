@@ -125,8 +125,9 @@ can review.
 | --- | --- |
 | Settings → General → Pull Requests | Allow squash and rebase merges only; enable *Automatically delete head branches* |
 | Settings → Actions → General | Workflow permissions: *Read repository contents*; require approval for all outside contributors' workflow runs |
-| Settings → Code security | Enable private vulnerability reporting, Dependabot alerts, and secret scanning with push protection |
 | Settings → Actions → General | Disable *Allow GitHub Actions to create and approve pull requests* |
+| Settings → Security and quality → Advanced Security | Enable *Secret Protection*, then *Push protection* inside it |
+| Settings → Security and quality → Advanced Security | Enable *Private vulnerability reporting*, *Dependabot alerts*, and *Dependabot security updates* |
 
 Before the repository is switched to public, check the history for anything that should not be
 there — log files, firmware dumps, machine names, tokens. Making a repository public exposes
