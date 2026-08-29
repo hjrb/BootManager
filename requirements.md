@@ -25,7 +25,7 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
      firmware/loader/kernel/userspace where the platform provides it).
    - Platform quirks relevant to dual boot troubleshooting, e.g. Windows "Fast Startup" (hiberboot),
      which leaves the disk in a hibernated state and is a frequent cause of dual-boot problems.
-   - The information must be refreshable and copyable, so it can be pasted into a bug report.
+   - The information must be able to refresh and copyable, so it can be pasted into a bug report.
 10. Expose a command line interface with the following commands, each printing its result to the console:
     | Command | Purpose |
     | --- | --- |
@@ -38,13 +38,13 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     When a CLI command is invoked without Administrator/root privileges the application must simply
     fail with an error message and a non-zero exit code - it must **not** try to re-launch itself
     elevated, since that would detach from the console and lose the output.
-
-### Default boot item vs. next boot item
-These are two distinct UEFI concepts and the UI must keep them clearly separated:
-
-| | Default boot item | Next boot item |
-| --- | --- | --- |
-| Scope | **Persistent** - applies to every boot | **One-time** - applies to the next boot only |
+11. Add a power control in the main window that opens a popup menu with the supported shutdown/reboot actions for the current OS:
+    - Immediate reboot.
+    - Delayed reboot (20 seconds, with an on-screen countdown and a cancel button).
+    - Shutdown.
+    - Full shutdown on Windows only; hidden on Linux and macOS where the OS does not expose a separate action.
+    - Unsupported actions for a given OS must be hidden instead of shown as disabled items.
+    - On Linux and macOS, the implementation should still expose the closest equivalent operations that are actually supported by the platform, such as `systemctl reboot`/`poweroff` and `shutdown -r now`/`shutdown -h now`.
 | Lifetime | Stays in effect until changed again | Consumed by the firmware at the next boot, then the default applies again |
 | UEFI variable | `BootOrder` (its first entry) | `BootNext` |
 | Windows (`bcdedit`) | `{fwbootmgr}` `displayorder` (first entry) | `{fwbootmgr}` `bootsequence` |
@@ -106,7 +106,7 @@ of the default (persistent startup disk).
   - macOS: `diskutil list` / `bless --getBoot` (enumerate), `bless --device /dev/<id> --setBoot`
     (persistent startup disk selection - no true one-time boot on macOS, so "next boot" and "default"
     map to the same operation). Requesting firmware setup is
-    **not supported** on macOS (no scriptable equivalent); the app surfaces this as an error message.
+    **not supported** on macOS (no script supported equivalent); the app surfaces this as an error message.
 - Logging configured via Serilog reading from `appsettings.json` (`Serilog` section), rolling daily,
   size-limited, retaining 14 files.
 - `Services/ElevationService` detects elevation (`WindowsPrincipal.IsInRole(Administrator)` on Windows,

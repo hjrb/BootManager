@@ -79,6 +79,9 @@ public partial class MainViewModel : ViewModelBase
     /// <summary>Caption of the restart button, which differs per platform.</summary>
     public string RestartElevatedLabel => ElevationService.RestartActionLabel;
 
+    /// <summary>Power actions supported by this OS, shown in the popup menu.</summary>
+    public IReadOnlyList<PowerActionKind> PowerActions => SystemPowerService.GetSupportedActions();
+
     /// <summary>Whether an operation is in progress; drives the progress bar.</summary>
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
@@ -157,6 +160,21 @@ public partial class MainViewModel : ViewModelBase
         {
             await _bootManagerService.RequestBootToFirmwareSetupAsync();
             ShowNotification("System configured to open UEFI firmware setup on next boot.", isError: false);
+        });
+    }
+
+    /// <summary>Executes a shutdown or reboot action chosen from the power popup menu.</summary>
+    public async Task ExecutePowerActionAsync(PowerActionKind action)
+    {
+        if (action == PowerActionKind.DelayedReboot)
+        {
+            return;
+        }
+
+        await RunGuardedAsync(async () =>
+        {
+            await SystemPowerService.ExecuteAsync(action).ConfigureAwait(false);
+            ShowNotification($"{SystemPowerService.GetLabel(action)} started.", isError: false);
         });
     }
 

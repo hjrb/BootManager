@@ -86,6 +86,7 @@
                         <Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="One-time override: applies to the next boot only, then reverts to the default." />
                         <Button Content="Set as Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="Persistent: applies to every boot until changed again." />
                         <Button Content="Open UEFI Setup at Next Boot" Command="{Binding ConfigureFirmwareSetupCommand}" />
+                        <Button x:Name="PowerButton" Content="Power" Click="OnPowerButtonClick" />
                     </WrapPanel>
                 </Grid>
             </TabItem>

@@ -1,6 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using BootManager.Services;
 using BootManager.ViewModels;
 
 namespace BootManager.Views;
@@ -48,5 +50,45 @@ public partial class MainWindow : Window
         {
             await clipboard.SetTextAsync(text);
         }
+    }
+
+    /// <summary>Shows the power menu containing only the actions supported by the current OS.</summary>
+    private async void OnPowerButtonClick(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel)
+        {
+            return;
+        }
+
+        var actions = viewModel.PowerActions;
+        if (actions.Count == 0)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu();
+        foreach (var action in actions)
+        {
+            var item = new MenuItem
+            {
+                Header = SystemPowerService.GetLabel(action),
+            };
+
+            item.Click += async (_, _) =>
+            {
+                if (action == PowerActionKind.DelayedReboot)
+                {
+                    var dialog = new PowerCountdownWindow();
+                    await dialog.ShowDialog(this);
+                    return;
+                }
+
+                await viewModel.ExecutePowerActionAsync(action);
+            };
+
+            menu.Items.Add(item);
+        }
+
+        menu.Open(PowerButton);
     }
 }

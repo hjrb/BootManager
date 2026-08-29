@@ -5,6 +5,11 @@
         "bootsequence",
         "displayorder",
         "efibootmgr",
-        "fwbootmgr"
+        "fwbootmgr",
+        "geteuid",
+        "hiberboot",
+        "osascript",
+        "setdef",
+        "setnext"
     ]
 }
