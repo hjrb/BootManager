@@ -30,7 +30,7 @@ public static class CommandLineInterface
     private const int ExitFailure = 1;
 
     /// <summary>The commands recognised as the first argument, compared case-insensitively.</summary>
-    private static readonly string[] KnownCommands = ["list", "setnext", "setdef", "bootuefi", "info", "help", "--help", "-h"];
+    private static readonly string[] KnownCommands = ["list", "setnext", "setdef", "bootuefi", "info", "reboot", "shutdown", "help", "--help", "-h"];
 
     /// <summary>
     /// Decides whether the given command line asks for console mode rather than the window.
@@ -78,6 +78,8 @@ public static class CommandLineInterface
                 "setdef" => await SetBootEntryAsync(args, next: false),
                 "bootuefi" => await BootToFirmwareSetupAsync(),
                 "info" => await PrintSystemInfoAsync(),
+                "reboot" => await ExecutePowerActionAsync(PowerActionKind.ImmediateReboot, "Rebooting now."),
+                "shutdown" => await ExecutePowerActionAsync(PowerActionKind.Shutdown, "Shutting down now."),
                 _ => Unreachable(),
             };
         }
@@ -167,6 +169,14 @@ public static class CommandLineInterface
         return ExitSuccess;
     }
 
+    /// <summary>Triggers an immediate reboot or shutdown, without the GUI's delayed countdown.</summary>
+    private static async Task<int> ExecutePowerActionAsync(PowerActionKind action, string confirmationMessage)
+    {
+        await SystemPowerService.ExecuteAsync(action);
+        Console.WriteLine(confirmationMessage);
+        return ExitSuccess;
+    }
+
     /// <summary>Options controlling the JSON formatting of the <c>info</c> command's output.</summary>
     private static readonly JsonSerializerOptions InfoJsonOptions = new()
     {
@@ -211,6 +221,8 @@ public static class CommandLineInterface
         Console.WriteLine("  setdef <id>      Make the given entry the permanent default.");
         Console.WriteLine("  bootUEFI         Open the UEFI firmware setup on the next boot.");
         Console.WriteLine("  info             Print boot related system information as JSON.");
+        Console.WriteLine("  reboot           Reboot the machine immediately.");
+        Console.WriteLine("  shutdown         Shut down the machine immediately.");
         Console.WriteLine("  help             Show this text.");
         Console.WriteLine();
         Console.WriteLine("Start without a command to open the graphical interface.");
