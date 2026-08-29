@@ -7,3 +7,6 @@
 | **Set next boot only**              | `bcdedit /bootsequence {ID}`                            | `efibootmgr -n XXXX`                | `bless --nextonly ...`                 | Apple-specific                                     |
 | **Open UEFI/boot configuration**    | `shutdown /r /fw /t 0`                                  | `systemctl reboot --firmware-setup` | `bless --nextonly --firmware`          | `systemctl` not applicable; Apple Startup Options  |
 | **Delete an entry**                 | `bcdedit /delete {ID}`*                                 | `efibootmgr -b XXXX -B`             | no equivalent UEFI NVRAM concept       | —                                                  |
+
+# Notes
+Sure you can learn all that. Or just use the tool :-)
