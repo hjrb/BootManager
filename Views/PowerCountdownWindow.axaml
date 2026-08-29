@@ -1,28 +1,28 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        x:Class="BootManager.Views.PowerCountdownWindow"
-        Title="Delayed Reboot"
-        Width="340"
-        Height="180"
-        CanResize="False"
-        ShowInTaskbar="False"
-        WindowStartupLocation="CenterOwner">
-    <StackPanel Margin="20" Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center">
-        <TextBlock Text="Delayed Reboot" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
-        <TextBlock x:Name="CountdownText" Text="Rebooting in 20 seconds" FontSize="18" HorizontalAlignment="Center" />
-        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
-            <Button x:Name="CancelButton" Width="120" HorizontalContentAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                    <TextBlock Text="&#x2715;" FontSize="14" VerticalAlignment="Center" />
-                    <TextBlock Text="Cancel" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-            <Button x:Name="NowButton" Width="120" HorizontalContentAlignment="Center">
-                <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-                    <TextBlock Text="&#x21bb;" FontSize="14" VerticalAlignment="Center" />
-                    <TextBlock Text="Now" VerticalAlignment="Center" />
-                </StackPanel>
-            </Button>
-        </StackPanel>
-    </StackPanel>
+		xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+		x:Class="BootManager.Views.PowerCountdownWindow"
+		Title="Delayed Reboot"
+		Width="340"
+		Height="180"
+		CanResize="False"
+		ShowInTaskbar="False"
+		WindowStartupLocation="CenterOwner">
+	<StackPanel Margin="20" Spacing="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+		<TextBlock Text="Delayed Reboot" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" />
+		<TextBlock x:Name="CountdownText" Text="Rebooting in 20 seconds" FontSize="18" HorizontalAlignment="Center" />
+		<StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+			<Button x:Name="CancelButton" Width="120" HorizontalContentAlignment="Center">
+				<StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+					<TextBlock Text="&#x2715;" FontSize="14" VerticalAlignment="Center" />
+					<TextBlock Text="Cancel" VerticalAlignment="Center" />
+				</StackPanel>
+			</Button>
+			<Button x:Name="NowButton" Width="120" HorizontalContentAlignment="Center">
+				<StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+					<TextBlock Text="&#x21bb;" FontSize="14" VerticalAlignment="Center" />
+					<TextBlock Text="Now" VerticalAlignment="Center" />
+				</StackPanel>
+			</Button>
+		</StackPanel>
+	</StackPanel>
 </Window>

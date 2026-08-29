@@ -17,78 +17,78 @@ namespace BootManager.Views;
 /// </remarks>
 public partial class MainWindow : Window
 {
-    public MainWindow()
-    {
-        InitializeComponent();
-    }
+	public MainWindow()
+	{
+		InitializeComponent();
+	}
 
-    /// <summary>Copies the text of the currently shown notification to the clipboard.</summary>
-    private async void OnCopyNotification(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is MainViewModel { NotificationMessage: { Length: > 0 } message })
-        {
-            await CopyAsync(message);
-        }
-    }
+	/// <summary>Copies the text of the currently shown notification to the clipboard.</summary>
+	private async void OnCopyNotification(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is MainViewModel { NotificationMessage: { Length: > 0 } message })
+		{
+			await CopyAsync(message);
+		}
+	}
 
-    /// <summary>Copies the whole system information list as plain text, for pasting into a bug report.</summary>
-    private async void OnCopySystemInfo(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is MainViewModel viewModel)
-        {
-            await CopyAsync(viewModel.GetSystemInfoAsText());
-        }
-    }
+	/// <summary>Copies the whole system information list as plain text, for pasting into a bug report.</summary>
+	private async void OnCopySystemInfo(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is MainViewModel viewModel)
+		{
+			await CopyAsync(viewModel.GetSystemInfoAsText());
+		}
+	}
 
-    /// <summary>
-    /// Writes text to the system clipboard, ignoring the case where no clipboard is available
-    /// (which can happen on a headless or unusual desktop session).
-    /// </summary>
-    private async Task CopyAsync(string text)
-    {
-        if (Clipboard is { } clipboard)
-        {
-            await clipboard.SetTextAsync(text);
-        }
-    }
+	/// <summary>
+	/// Writes text to the system clipboard, ignoring the case where no clipboard is available
+	/// (which can happen on a headless or unusual desktop session).
+	/// </summary>
+	private async Task CopyAsync(string text)
+	{
+		if (Clipboard is { } clipboard)
+		{
+			await clipboard.SetTextAsync(text);
+		}
+	}
 
-    /// <summary>Shows the power menu containing only the actions supported by the current OS.</summary>
-    private async void OnPowerButtonClick(object? sender, RoutedEventArgs e)
-    {
-        if (DataContext is not MainViewModel viewModel)
-        {
-            return;
-        }
+	/// <summary>Shows the power menu containing only the actions supported by the current OS.</summary>
+	private async void OnPowerButtonClick(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is not MainViewModel viewModel)
+		{
+			return;
+		}
 
-        var actions = viewModel.PowerActions;
-        if (actions.Count == 0)
-        {
-            return;
-        }
+		var actions = viewModel.PowerActions;
+		if (actions.Count == 0)
+		{
+			return;
+		}
 
-        var menu = new ContextMenu();
-        foreach (var action in actions)
-        {
-            var item = new MenuItem
-            {
-                Header = SystemPowerService.GetLabel(action),
-            };
+		var menu = new ContextMenu();
+		foreach (var action in actions)
+		{
+			var item = new MenuItem
+			{
+				Header = SystemPowerService.GetLabel(action),
+			};
 
-            item.Click += async (_, _) =>
-            {
-                if (action == PowerActionKind.DelayedReboot)
-                {
-                    var dialog = new PowerCountdownWindow();
-                    await dialog.ShowDialog(this);
-                    return;
-                }
+			item.Click += async (_, _) =>
+			{
+				if (action == PowerActionKind.DelayedReboot)
+				{
+					var dialog = new PowerCountdownWindow();
+					await dialog.ShowDialog(this);
+					return;
+				}
 
-                await viewModel.ExecutePowerActionAsync(action);
-            };
+				await viewModel.ExecutePowerActionAsync(action);
+			};
 
-            menu.Items.Add(item);
-        }
+			menu.Items.Add(item);
+		}
 
-        menu.Open(PowerButton);
-    }
+		menu.Open(PowerButton);
+	}
 }

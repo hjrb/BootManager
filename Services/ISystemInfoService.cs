@@ -17,13 +17,13 @@ namespace BootManager.Services;
 /// </remarks>
 public interface ISystemInfoService
 {
-    /// <summary>
-    /// Gathers everything that is known about the machine's boot configuration and history.
-    /// </summary>
-    /// <param name="cancellationToken">Allows the caller to abort slow platform queries.</param>
-    /// <returns>
-    /// The collected facts, grouped by category and in a sensible display order. Values that could not
-    /// be determined are still present, carrying an explanatory text instead of being dropped.
-    /// </returns>
-    Task<IReadOnlyList<SystemInfoItem>> GetSystemInfoAsync(CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Gathers everything that is known about the machine's boot configuration and history.
+	/// </summary>
+	/// <param name="cancellationToken">Allows the caller to abort slow platform queries.</param>
+	/// <returns>
+	/// The collected facts, grouped by category and in a sensible display order. Values that could not
+	/// be determined are still present, carrying an explanatory text instead of being dropped.
+	/// </returns>
+	Task<IReadOnlyList<SystemInfoItem>> GetSystemInfoAsync(CancellationToken cancellationToken = default);
 }

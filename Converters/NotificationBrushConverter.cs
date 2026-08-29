@@ -15,14 +15,14 @@ namespace BootManager.Converters;
 /// </remarks>
 public sealed class NotificationBrushConverter : IValueConverter
 {
-    /// <summary>The shared instance referenced from XAML.</summary>
-    public static readonly NotificationBrushConverter Instance = new();
+	/// <summary>The shared instance referenced from XAML.</summary>
+	public static readonly NotificationBrushConverter Instance = new();
 
-    /// <summary>Returns red for an error and blue for an informational message.</summary>
-    public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => value is true ? Brushes.IndianRed : Brushes.SteelBlue;
+	/// <summary>Returns red for an error and blue for an informational message.</summary>
+	public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
+		=> value is true ? Brushes.IndianRed : Brushes.SteelBlue;
 
-    /// <summary>Not supported: the binding is one-way, a colour is never translated back into a flag.</summary>
-    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
-        => throw new NotSupportedException();
+	/// <summary>Not supported: the binding is one-way, a colour is never translated back into a flag.</summary>
+	public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+		=> throw new NotSupportedException();
 }

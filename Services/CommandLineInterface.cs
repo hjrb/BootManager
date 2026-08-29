@@ -23,306 +23,306 @@ namespace BootManager.Services;
 /// </remarks>
 public static class CommandLineInterface
 {
-    /// <summary>Exit code reported when a command completed successfully.</summary>
-    private const int ExitSuccess = 0;
+	/// <summary>Exit code reported when a command completed successfully.</summary>
+	private const int ExitSuccess = 0;
 
-    /// <summary>Exit code reported when a command failed for any reason.</summary>
-    private const int ExitFailure = 1;
+	/// <summary>Exit code reported when a command failed for any reason.</summary>
+	private const int ExitFailure = 1;
 
-    /// <summary>The commands recognised as the first argument, compared case-insensitively.</summary>
-    private static readonly string[] KnownCommands =
-        ["list", "setnext", "setdef", "bootuefi", "info", "disablefaststartup", "reboot", "shutdown", "help", "--help", "-h"];
+	/// <summary>The commands recognised as the first argument, compared case-insensitively.</summary>
+	private static readonly string[] KnownCommands =
+		["list", "setnext", "setdef", "bootuefi", "info", "disablefaststartup", "reboot", "shutdown", "help", "--help", "-h"];
 
-    /// <summary>
-    /// Decides whether the given command line asks for console mode rather than the window.
-    /// </summary>
-    /// <remarks>
-    /// Only the first argument is examined. Anything else - including no arguments at all, or only
-    /// configuration overrides such as <c>--Serilog:MinimumLevel=Debug</c> - starts the GUI.
-    /// </remarks>
-    public static bool IsCommandLineInvocation(string[] args) =>
-        args.Length > 0 && KnownCommands.Contains(args[0], StringComparer.OrdinalIgnoreCase);
+	/// <summary>
+	/// Decides whether the given command line asks for console mode rather than the window.
+	/// </summary>
+	/// <remarks>
+	/// Only the first argument is examined. Anything else - including no arguments at all, or only
+	/// configuration overrides such as <c>--Serilog:MinimumLevel=Debug</c> - starts the GUI.
+	/// </remarks>
+	public static bool IsCommandLineInvocation(string[] args) =>
+		args.Length > 0 && KnownCommands.Contains(args[0], StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>
-    /// Executes the requested command and prints the result.
-    /// </summary>
-    /// <param name="args">The raw command line arguments; the first one selects the command.</param>
-    /// <returns>0 when the command succeeded, 1 when it failed. This becomes the process exit code.</returns>
-    public static async Task<int> RunAsync(string[] args)
-    {
-        var command = args[0].ToLowerInvariant();
-        Log.Verbose("Running command line command {Command}", command);
+	/// <summary>
+	/// Executes the requested command and prints the result.
+	/// </summary>
+	/// <param name="args">The raw command line arguments; the first one selects the command.</param>
+	/// <returns>0 when the command succeeded, 1 when it failed. This becomes the process exit code.</returns>
+	public static async Task<int> RunAsync(string[] args)
+	{
+		var command = args[0].ToLowerInvariant();
+		Log.Verbose("Running command line command {Command}", command);
 
-        if (command is "help" or "--help" or "-h")
-        {
-            PrintUsage();
-            return ExitSuccess;
-        }
+		if (command is "help" or "--help" or "-h")
+		{
+			PrintUsage();
+			return ExitSuccess;
+		}
 
-        // Every remaining command touches firmware state, so refuse early with a clear message rather
-        // than letting the underlying tool fail with a less obvious "access denied".
-        if (!ElevationService.IsElevated())
-        {
-            Console.Error.WriteLine(
-                $"Error: this command requires {ElevationService.RequiredPrivilegeName} privileges. "
-                + "Re-run it from an elevated console.");
-            Log.Error("Command {Command} refused: missing {Privilege} privileges", command, ElevationService.RequiredPrivilegeName);
-            return ExitFailure;
-        }
+		// Every remaining command touches firmware state, so refuse early with a clear message rather
+		// than letting the underlying tool fail with a less obvious "access denied".
+		if (!ElevationService.IsElevated())
+		{
+			Console.Error.WriteLine(
+				$"Error: this command requires {ElevationService.RequiredPrivilegeName} privileges. "
+				+ "Re-run it from an elevated console.");
+			Log.Error("Command {Command} refused: missing {Privilege} privileges", command, ElevationService.RequiredPrivilegeName);
+			return ExitFailure;
+		}
 
-        try
-        {
-            return command switch
-            {
-                "list" => await ListAsync(),
-                "setnext" => await SetBootEntryAsync(args, next: true),
-                "setdef" => await SetBootEntryAsync(args, next: false),
-                "bootuefi" => await BootToFirmwareSetupAsync(),
-                "info" => await PrintSystemInfoAsync(),
-                "disablefaststartup" => DisableFastStartup(),
-                "reboot" => await ExecutePowerActionAsync(PowerActionKind.ImmediateReboot, "Rebooting now."),
-                "shutdown" => await ExecutePowerActionAsync(PowerActionKind.Shutdown, "Shutting down now."),
-                _ => Unreachable(),
-            };
-        }
-        catch (Exception ex)
-        {
-            // The console equivalent of the window's notification banner: report and fail, never crash.
-            Console.Error.WriteLine($"Error: {ex.Message}");
-            Log.Error(ex, "Command {Command} failed", command);
-            return ExitFailure;
-        }
-    }
+		try
+		{
+			return command switch
+			{
+				"list" => await ListAsync(),
+				"setnext" => await SetBootEntryAsync(args, next: true),
+				"setdef" => await SetBootEntryAsync(args, next: false),
+				"bootuefi" => await BootToFirmwareSetupAsync(),
+				"info" => await PrintSystemInfoAsync(),
+				"disablefaststartup" => DisableFastStartup(),
+				"reboot" => await ExecutePowerActionAsync(PowerActionKind.ImmediateReboot, "Rebooting now."),
+				"shutdown" => await ExecutePowerActionAsync(PowerActionKind.Shutdown, "Shutting down now."),
+				_ => Unreachable(),
+			};
+		}
+		catch (Exception ex)
+		{
+			// The console equivalent of the window's notification banner: report and fail, never crash.
+			Console.Error.WriteLine($"Error: {ex.Message}");
+			Log.Error(ex, "Command {Command} failed", command);
+			return ExitFailure;
+		}
+	}
 
-    /// <summary>Prints all boot entries, marking the default and the next boot entry.</summary>
-    private static async Task<int> ListAsync()
-    {
-        var entries = await BootManagerServiceFactory.Create().GetBootEntriesAsync();
-        if (entries.Count == 0)
-        {
-            Console.WriteLine("No boot entries found.");
-            return ExitSuccess;
-        }
+	/// <summary>Prints all boot entries, marking the default and the next boot entry.</summary>
+	private static async Task<int> ListAsync()
+	{
+		var entries = await BootManagerServiceFactory.Create().GetBootEntriesAsync();
+		if (entries.Count == 0)
+		{
+			Console.WriteLine("No boot entries found.");
+			return ExitSuccess;
+		}
 
-        // Width the id column to the longest id so the output stays aligned on every platform,
-        // since ids range from four characters on Linux to full GUIDs on Windows.
-        var idWidth = Math.Max(2, entries.Max(e => e.Id.Length));
-        Console.WriteLine($"{"ID".PadRight(idWidth)}  FLAGS  DESCRIPTION");
+		// Width the id column to the longest id so the output stays aligned on every platform,
+		// since ids range from four characters on Linux to full GUIDs on Windows.
+		var idWidth = Math.Max(2, entries.Max(e => e.Id.Length));
+		Console.WriteLine($"{"ID".PadRight(idWidth)}  FLAGS  DESCRIPTION");
 
-        foreach (var entry in entries)
-        {
-            // "*" marks the persistent default, ">" the entry that will actually boot next.
-            var flags = $"{(entry.IsCurrentDefault ? "*" : " ")}{(entry.IsNextBoot ? ">" : " ")}";
-            Console.WriteLine($"{entry.Id.PadRight(idWidth)}  {flags,-5}  {entry.Description}");
-        }
+		foreach (var entry in entries)
+		{
+			// "*" marks the persistent default, ">" the entry that will actually boot next.
+			var flags = $"{(entry.IsCurrentDefault ? "*" : " ")}{(entry.IsNextBoot ? ">" : " ")}";
+			Console.WriteLine($"{entry.Id.PadRight(idWidth)}  {flags,-5}  {entry.Description}");
+		}
 
-        Console.WriteLine();
-        Console.WriteLine("* = default (every boot)   > = next boot (one time)");
-        return ExitSuccess;
-    }
+		Console.WriteLine();
+		Console.WriteLine("* = default (every boot)   > = next boot (one time)");
+		return ExitSuccess;
+	}
 
-    /// <summary>
-    /// Applies either the one-time or the persistent boot selection.
-    /// </summary>
-    /// <param name="args">Command line arguments; the second one must be the entry id.</param>
-    /// <param name="next">
-    /// <see langword="true"/> for a one-time override, <see langword="false"/> to change the default.
-    /// </param>
-    private static async Task<int> SetBootEntryAsync(string[] args, bool next)
-    {
-        if (args.Length < 2)
-        {
-            Console.Error.WriteLine($"Error: '{args[0]}' requires a boot entry id. Run 'list' to see the available ids.");
-            return ExitFailure;
-        }
+	/// <summary>
+	/// Applies either the one-time or the persistent boot selection.
+	/// </summary>
+	/// <param name="args">Command line arguments; the second one must be the entry id.</param>
+	/// <param name="next">
+	/// <see langword="true"/> for a one-time override, <see langword="false"/> to change the default.
+	/// </param>
+	private static async Task<int> SetBootEntryAsync(string[] args, bool next)
+	{
+		if (args.Length < 2)
+		{
+			Console.Error.WriteLine($"Error: '{args[0]}' requires a boot entry id. Run 'list' to see the available ids.");
+			return ExitFailure;
+		}
 
-        var id = args[1];
-        var service = BootManagerServiceFactory.Create();
+		var id = args[1];
+		var service = BootManagerServiceFactory.Create();
 
-        // The id is resolved against the real entries instead of being passed through blindly: this
-        // catches typos before anything is written, and yields the description for the confirmation.
-        var entries = await service.GetBootEntriesAsync();
-        var entry = entries.FirstOrDefault(e => string.Equals(e.Id, id, StringComparison.OrdinalIgnoreCase));
-        if (entry is null)
-        {
-            Console.Error.WriteLine($"Error: no boot entry with id '{id}'. Run 'list' to see the available ids.");
-            return ExitFailure;
-        }
+		// The id is resolved against the real entries instead of being passed through blindly: this
+		// catches typos before anything is written, and yields the description for the confirmation.
+		var entries = await service.GetBootEntriesAsync();
+		var entry = entries.FirstOrDefault(e => string.Equals(e.Id, id, StringComparison.OrdinalIgnoreCase));
+		if (entry is null)
+		{
+			Console.Error.WriteLine($"Error: no boot entry with id '{id}'. Run 'list' to see the available ids.");
+			return ExitFailure;
+		}
 
-        if (next)
-        {
-            await service.SetNextBootEntryAsync(entry);
-            Console.WriteLine($"Next boot set to '{entry.Description}' ({entry.Id}). This applies once; the default is unchanged.");
-        }
-        else
-        {
-            await service.SetDefaultBootEntryAsync(entry);
-            Console.WriteLine($"Default boot entry set to '{entry.Description}' ({entry.Id}).");
-        }
+		if (next)
+		{
+			await service.SetNextBootEntryAsync(entry);
+			Console.WriteLine($"Next boot set to '{entry.Description}' ({entry.Id}). This applies once; the default is unchanged.");
+		}
+		else
+		{
+			await service.SetDefaultBootEntryAsync(entry);
+			Console.WriteLine($"Default boot entry set to '{entry.Description}' ({entry.Id}).");
+		}
 
-        return ExitSuccess;
-    }
+		return ExitSuccess;
+	}
 
-    /// <summary>Arms the request to show the firmware setup screen on the next boot.</summary>
-    private static async Task<int> BootToFirmwareSetupAsync()
-    {
-        await BootManagerServiceFactory.Create().RequestBootToFirmwareSetupAsync();
-        Console.WriteLine("The system will open the UEFI firmware setup on the next boot.");
-        return ExitSuccess;
-    }
+	/// <summary>Arms the request to show the firmware setup screen on the next boot.</summary>
+	private static async Task<int> BootToFirmwareSetupAsync()
+	{
+		await BootManagerServiceFactory.Create().RequestBootToFirmwareSetupAsync();
+		Console.WriteLine("The system will open the UEFI firmware setup on the next boot.");
+		return ExitSuccess;
+	}
 
-    /// <summary>
-    /// Switches Windows Fast Startup off so that a shutdown really powers the machine down.
-    /// </summary>
-    /// <remarks>
-    /// Windows only: the setting does not exist on Linux or macOS, so the command reports that instead
-    /// of silently doing nothing. The change takes effect with the next shutdown, not immediately.
-    /// </remarks>
-    private static int DisableFastStartup()
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            Console.Error.WriteLine("Error: 'disableFastStartup' is a Windows-only command; this setting does not exist on this platform.");
-            return ExitFailure;
-        }
+	/// <summary>
+	/// Switches Windows Fast Startup off so that a shutdown really powers the machine down.
+	/// </summary>
+	/// <remarks>
+	/// Windows only: the setting does not exist on Linux or macOS, so the command reports that instead
+	/// of silently doing nothing. The change takes effect with the next shutdown, not immediately.
+	/// </remarks>
+	private static int DisableFastStartup()
+	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			Console.Error.WriteLine("Error: 'disableFastStartup' is a Windows-only command; this setting does not exist on this platform.");
+			return ExitFailure;
+		}
 
-        Console.WriteLine(WindowsFastStartupService.Disable()
-            ? "Fast Startup disabled. It takes effect from the next shutdown on, which will then really power the machine down."
-            : "Fast Startup was already disabled; nothing was changed.");
+		Console.WriteLine(WindowsFastStartupService.Disable()
+			? "Fast Startup disabled. It takes effect from the next shutdown on, which will then really power the machine down."
+			: "Fast Startup was already disabled; nothing was changed.");
 
-        return ExitSuccess;
-    }
+		return ExitSuccess;
+	}
 
-    /// <summary>Triggers an immediate reboot or shutdown, without the GUI's delayed countdown.</summary>
-    private static async Task<int> ExecutePowerActionAsync(PowerActionKind action, string confirmationMessage)
-    {
-        await SystemPowerService.ExecuteAsync(action);
-        Console.WriteLine(confirmationMessage);
-        return ExitSuccess;
-    }
+	/// <summary>Triggers an immediate reboot or shutdown, without the GUI's delayed countdown.</summary>
+	private static async Task<int> ExecutePowerActionAsync(PowerActionKind action, string confirmationMessage)
+	{
+		await SystemPowerService.ExecuteAsync(action);
+		Console.WriteLine(confirmationMessage);
+		return ExitSuccess;
+	}
 
-    /// <summary>Options controlling the JSON formatting of the <c>info</c> command's output.</summary>
-    private static readonly JsonSerializerOptions InfoJsonOptions = new()
-    {
-        WriteIndented = true,
-        // Category/Label/Value read naturally in camelCase JSON, and scripts consuming this output
-        // are more likely to expect that convention than PascalCase record property names.
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    };
+	/// <summary>Options controlling the JSON formatting of the <c>info</c> command's output.</summary>
+	private static readonly JsonSerializerOptions InfoJsonOptions = new()
+	{
+		WriteIndented = true,
+		// Category/Label/Value read naturally in camelCase JSON, and scripts consuming this output
+		// are more likely to expect that convention than PascalCase record property names.
+		PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+	};
 
-    /// <summary>Prints the boot diagnostics as JSON, grouped by category.</summary>
-    /// <remarks>
-    /// JSON rather than the previous aligned-columns text: it is unambiguous to parse from scripts,
-    /// and the grouping still matches how <see cref="SystemInfoItem.Category"/> organises the data.
-    /// </remarks>
-    private static async Task<int> PrintSystemInfoAsync()
-    {
-        var info = await BootManagerServiceFactory.CreateSystemInfoService().GetSystemInfoAsync();
+	/// <summary>Prints the boot diagnostics as JSON, grouped by category.</summary>
+	/// <remarks>
+	/// JSON rather than the previous aligned-columns text: it is unambiguous to parse from scripts,
+	/// and the grouping still matches how <see cref="SystemInfoItem.Category"/> organises the data.
+	/// </remarks>
+	private static async Task<int> PrintSystemInfoAsync()
+	{
+		var info = await BootManagerServiceFactory.CreateSystemInfoService().GetSystemInfoAsync();
 
-        var grouped = info
-            .GroupBy(i => i.Category)
-            .Select(group => new
-            {
-                category = group.Key,
-                items = group.Select(i => new { label = i.Label, value = i.Value }),
-            });
+		var grouped = info
+			.GroupBy(i => i.Category)
+			.Select(group => new
+			{
+				category = group.Key,
+				items = group.Select(i => new { label = i.Label, value = i.Value }),
+			});
 
-        Console.WriteLine(JsonSerializer.Serialize(grouped, InfoJsonOptions));
+		Console.WriteLine(JsonSerializer.Serialize(grouped, InfoJsonOptions));
 
-        return ExitSuccess;
-    }
+		return ExitSuccess;
+	}
 
-    /// <summary>Prints the list of commands and their meaning.</summary>
-    private static void PrintUsage()
-    {
-        Console.WriteLine("BootManager - inspect and change UEFI boot options.");
-        Console.WriteLine();
-        Console.WriteLine("Usage: BootManager [command] [arguments]");
-        Console.WriteLine();
-        Console.WriteLine("Commands:");
-        Console.WriteLine("  list             List the available boot entries with their ids.");
-        Console.WriteLine("  setnext <id>     Boot the given entry on the next start only, then revert to the default.");
-        Console.WriteLine("  setdef <id>      Make the given entry the permanent default.");
-        Console.WriteLine("  bootUEFI         Open the UEFI firmware setup on the next boot.");
-        Console.WriteLine("  info             Print boot related system information as JSON.");
-        Console.WriteLine("  disableFastStartup");
-        Console.WriteLine("                   Windows only: turn off Fast Startup, so a shutdown really powers off.");
-        Console.WriteLine("  reboot           Reboot the machine immediately.");
-        Console.WriteLine("  shutdown         Shut down the machine immediately.");
-        Console.WriteLine("  help             Show this text.");
-        Console.WriteLine();
-        Console.WriteLine("Start without a command to open the graphical interface.");
-        Console.WriteLine($"All commands except 'help' require {ElevationService.RequiredPrivilegeName} privileges.");
-    }
+	/// <summary>Prints the list of commands and their meaning.</summary>
+	private static void PrintUsage()
+	{
+		Console.WriteLine("BootManager - inspect and change UEFI boot options.");
+		Console.WriteLine();
+		Console.WriteLine("Usage: BootManager [command] [arguments]");
+		Console.WriteLine();
+		Console.WriteLine("Commands:");
+		Console.WriteLine("  list             List the available boot entries with their ids.");
+		Console.WriteLine("  setnext <id>     Boot the given entry on the next start only, then revert to the default.");
+		Console.WriteLine("  setdef <id>      Make the given entry the permanent default.");
+		Console.WriteLine("  bootUEFI         Open the UEFI firmware setup on the next boot.");
+		Console.WriteLine("  info             Print boot related system information as JSON.");
+		Console.WriteLine("  disableFastStartup");
+		Console.WriteLine("                   Windows only: turn off Fast Startup, so a shutdown really powers off.");
+		Console.WriteLine("  reboot           Reboot the machine immediately.");
+		Console.WriteLine("  shutdown         Shut down the machine immediately.");
+		Console.WriteLine("  help             Show this text.");
+		Console.WriteLine();
+		Console.WriteLine("Start without a command to open the graphical interface.");
+		Console.WriteLine($"All commands except 'help' require {ElevationService.RequiredPrivilegeName} privileges.");
+	}
 
-    /// <summary>Guards the switch expression; <see cref="IsCommandLineInvocation"/> already filtered the input.</summary>
-    private static int Unreachable() => throw new InvalidOperationException("Unrecognised command.");
+	/// <summary>Guards the switch expression; <see cref="IsCommandLineInvocation"/> already filtered the input.</summary>
+	private static int Unreachable() => throw new InvalidOperationException("Unrecognised command.");
 
-    /// <summary>
-    /// Removes the console window that Windows creates for this process when it is started without a
-    /// shell, for example from Explorer or a shortcut.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// The executable is built for the console subsystem rather than as a GUI application, because that
-    /// is what makes a Windows shell wait for it: a GUI subsystem process gets its prompt back
-    /// immediately, so anything the CLI prints ends up behind the new prompt and the next keystroke
-    /// redraws over it. The price of the console subsystem is that Windows allocates a console of its
-    /// own whenever the program is not started from one - which is exactly the case in GUI mode.
-    /// </para>
-    /// <para>
-    /// The console is only given up when this process is the only one attached to it. Any higher count
-    /// means the console belongs to the shell that started the application, and hiding it would take the
-    /// user's own window away.
-    /// </para>
-    /// <para>
-    /// It is hidden before being released because <c>FreeConsole</c> alone leaves the empty window on
-    /// screen until the last process detaches. On Linux and macOS there is no such thing, and the
-    /// standard streams are simply inherited, so nothing needs to be done.
-    /// </para>
-    /// </remarks>
-    public static void DetachFromOwnConsole()
-    {
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return;
-        }
+	/// <summary>
+	/// Removes the console window that Windows creates for this process when it is started without a
+	/// shell, for example from Explorer or a shortcut.
+	/// </summary>
+	/// <remarks>
+	/// <para>
+	/// The executable is built for the console subsystem rather than as a GUI application, because that
+	/// is what makes a Windows shell wait for it: a GUI subsystem process gets its prompt back
+	/// immediately, so anything the CLI prints ends up behind the new prompt and the next keystroke
+	/// redraws over it. The price of the console subsystem is that Windows allocates a console of its
+	/// own whenever the program is not started from one - which is exactly the case in GUI mode.
+	/// </para>
+	/// <para>
+	/// The console is only given up when this process is the only one attached to it. Any higher count
+	/// means the console belongs to the shell that started the application, and hiding it would take the
+	/// user's own window away.
+	/// </para>
+	/// <para>
+	/// It is hidden before being released because <c>FreeConsole</c> alone leaves the empty window on
+	/// screen until the last process detaches. On Linux and macOS there is no such thing, and the
+	/// standard streams are simply inherited, so nothing needs to be done.
+	/// </para>
+	/// </remarks>
+	public static void DetachFromOwnConsole()
+	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return;
+		}
 
-        var console = GetConsoleWindow();
-        if (console == IntPtr.Zero)
-        {
-            return;
-        }
+		var console = GetConsoleWindow();
+		if (console == IntPtr.Zero)
+		{
+			return;
+		}
 
-        // A buffer of two is enough: the only distinction that matters is "just us" versus "more".
-        var attachedProcesses = new uint[2];
-        if (GetConsoleProcessList(attachedProcesses, (uint)attachedProcesses.Length) != 1)
-        {
-            return;
-        }
+		// A buffer of two is enough: the only distinction that matters is "just us" versus "more".
+		var attachedProcesses = new uint[2];
+		if (GetConsoleProcessList(attachedProcesses, (uint)attachedProcesses.Length) != 1)
+		{
+			return;
+		}
 
-        ShowWindow(console, SwHide);
-        FreeConsole();
-    }
+		ShowWindow(console, SwHide);
+		FreeConsole();
+	}
 
-    /// <summary>Value of <c>SW_HIDE</c>: hide the window without activating another one.</summary>
-    private const int SwHide = 0;
+	/// <summary>Value of <c>SW_HIDE</c>: hide the window without activating another one.</summary>
+	private const int SwHide = 0;
 
-    /// <summary>Returns the window handle of the console attached to this process, or zero if there is none.</summary>
-    [DllImport("kernel32.dll")]
-    private static extern IntPtr GetConsoleWindow();
+	/// <summary>Returns the window handle of the console attached to this process, or zero if there is none.</summary>
+	[DllImport("kernel32.dll")]
+	private static extern IntPtr GetConsoleWindow();
 
-    /// <summary>Fills the buffer with the ids of the processes attached to this console and returns their number.</summary>
-    [DllImport("kernel32.dll")]
-    private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
+	/// <summary>Fills the buffer with the ids of the processes attached to this console and returns their number.</summary>
+	[DllImport("kernel32.dll")]
+	private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
 
-    /// <summary>Detaches this process from its console.</summary>
-    [DllImport("kernel32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool FreeConsole();
+	/// <summary>Detaches this process from its console.</summary>
+	[DllImport("kernel32.dll", SetLastError = true)]
+	[return: MarshalAs(UnmanagedType.Bool)]
+	private static extern bool FreeConsole();
 
-    /// <summary>Changes a window's visibility.</summary>
-    [DllImport("user32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ShowWindow(IntPtr window, int command);
+	/// <summary>Changes a window's visibility.</summary>
+	[DllImport("user32.dll")]
+	[return: MarshalAs(UnmanagedType.Bool)]
+	private static extern bool ShowWindow(IntPtr window, int command);
 }

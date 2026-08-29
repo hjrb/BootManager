@@ -1,15 +1,16 @@
 {
-    "cSpell.words": [
-        "addfirst",
-        "bootmgr",
-        "bootsequence",
-        "displayorder",
-        "efibootmgr",
-        "fwbootmgr",
-        "geteuid",
-        "hiberboot",
-        "osascript",
-        "setdef",
-        "setnext"
-    ]
+	"cSpell.words": [
+		"addfirst",
+		"bootmgr",
+		"bootsequence",
+		"csrutil",
+		"displayorder",
+		"efibootmgr",
+		"fwbootmgr",
+		"geteuid",
+		"hiberboot",
+		"osascript",
+		"setdef",
+		"setnext"
+	]
 }
