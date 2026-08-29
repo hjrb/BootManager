@@ -1,4 +1,18 @@
 {
+	// main is protected on GitHub, so committing to it locally is always a mistake.
+	// VS Code creates a branch instead of letting the commit land on main.
+	"git.branchProtection": [
+		"main"
+	],
+	"git.branchProtectionPrompt": "alwaysCommitToNewBranch",
+	// Pushing a new branch is what triggers the extension's offer to open a pull request.
+	"git.postCommitCommand": "push",
+	"git.pruneOnFetch": true,
+	"githubPullRequests.createOnPublishBranch": "ask",
+	"githubPullRequests.pushBranch": "prompt",
+	// GitHub deletes the remote branch on merge; this clears the local one too, which
+	// otherwise piles up because squash merges leave branches looking unmerged.
+	"githubPullRequests.deleteBranchAfterMerge": true,
 	"cSpell.words": [
 		"addfirst",
 		"bootmgr",
