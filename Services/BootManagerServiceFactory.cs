@@ -14,57 +14,57 @@ namespace BootManager.Services;
 /// </remarks>
 public static class BootManagerServiceFactory
 {
-    /// <summary>
-    /// Creates the boot manager implementation for the current operating system.
-    /// </summary>
-    /// <returns>A Windows, Linux or macOS specific implementation.</returns>
-    /// <exception cref="PlatformNotSupportedException">
-    /// The application is running on an operating system for which no implementation exists.
-    /// </exception>
-    public static IBootManagerService Create()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return new WindowsBootManagerService();
-        }
+	/// <summary>
+	/// Creates the boot manager implementation for the current operating system.
+	/// </summary>
+	/// <returns>A Windows, Linux or macOS specific implementation.</returns>
+	/// <exception cref="PlatformNotSupportedException">
+	/// The application is running on an operating system for which no implementation exists.
+	/// </exception>
+	public static IBootManagerService Create()
+	{
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return new WindowsBootManagerService();
+		}
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return new LinuxBootManagerService();
-        }
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+		{
+			return new LinuxBootManagerService();
+		}
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            return new MacBootManagerService();
-        }
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		{
+			return new MacBootManagerService();
+		}
 
-        throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
-    }
+		throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
+	}
 
-    /// <summary>
-    /// Creates the diagnostics collector for the current operating system.
-    /// </summary>
-    /// <returns>A Windows, Linux or macOS specific implementation.</returns>
-    /// <exception cref="PlatformNotSupportedException">
-    /// The application is running on an operating system for which no implementation exists.
-    /// </exception>
-    public static ISystemInfoService CreateSystemInfoService()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-        {
-            return new WindowsSystemInfoService();
-        }
+	/// <summary>
+	/// Creates the diagnostics collector for the current operating system.
+	/// </summary>
+	/// <returns>A Windows, Linux or macOS specific implementation.</returns>
+	/// <exception cref="PlatformNotSupportedException">
+	/// The application is running on an operating system for which no implementation exists.
+	/// </exception>
+	public static ISystemInfoService CreateSystemInfoService()
+	{
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return new WindowsSystemInfoService();
+		}
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            return new LinuxSystemInfoService();
-        }
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+		{
+			return new LinuxSystemInfoService();
+		}
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
-            return new MacSystemInfoService();
-        }
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		{
+			return new MacSystemInfoService();
+		}
 
-        throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
-    }
+		throw new PlatformNotSupportedException($"Unsupported platform: {RuntimeInformation.OSDescription}");
+	}
 }

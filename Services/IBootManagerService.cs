@@ -30,56 +30,56 @@ namespace BootManager.Services;
 /// </remarks>
 public interface IBootManagerService
 {
-    /// <summary>
-    /// Reads the list of boot entries the firmware currently offers.
-    /// </summary>
-    /// <param name="cancellationToken">Allows the caller to abort a slow enumeration.</param>
-    /// <returns>
-    /// The entries in firmware boot order, so the first element is the current default. Each entry
-    /// carries flags telling whether it is the default and/or the next-boot entry.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// The platform tool used for enumeration failed, typically because of missing privileges.
-    /// </exception>
-    Task<IReadOnlyList<BootEntry>> GetBootEntriesAsync(CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Reads the list of boot entries the firmware currently offers.
+	/// </summary>
+	/// <param name="cancellationToken">Allows the caller to abort a slow enumeration.</param>
+	/// <returns>
+	/// The entries in firmware boot order, so the first element is the current default. Each entry
+	/// carries flags telling whether it is the default and/or the next-boot entry.
+	/// </returns>
+	/// <exception cref="InvalidOperationException">
+	/// The platform tool used for enumeration failed, typically because of missing privileges.
+	/// </exception>
+	Task<IReadOnlyList<BootEntry>> GetBootEntriesAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Selects the given entry to be used for the <b>next boot only</b>.
-    /// </summary>
-    /// <remarks>
-    /// This is a one-time override: the firmware consumes it during the next start and then falls
-    /// back to the default entry. Use it to boot into another OS once without changing the machine's
-    /// normal behavior. It does not modify the default entry.
-    /// </remarks>
-    /// <param name="entry">The entry to boot next time. Must come from <see cref="GetBootEntriesAsync"/>.</param>
-    /// <param name="cancellationToken">Allows the caller to abort the operation.</param>
-    /// <exception cref="InvalidOperationException">The platform tool rejected the change.</exception>
-    Task SetNextBootEntryAsync(BootEntry entry, CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Selects the given entry to be used for the <b>next boot only</b>.
+	/// </summary>
+	/// <remarks>
+	/// This is a one-time override: the firmware consumes it during the next start and then falls
+	/// back to the default entry. Use it to boot into another OS once without changing the machine's
+	/// normal behavior. It does not modify the default entry.
+	/// </remarks>
+	/// <param name="entry">The entry to boot next time. Must come from <see cref="GetBootEntriesAsync"/>.</param>
+	/// <param name="cancellationToken">Allows the caller to abort the operation.</param>
+	/// <exception cref="InvalidOperationException">The platform tool rejected the change.</exception>
+	Task SetNextBootEntryAsync(BootEntry entry, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Makes the given entry the <b>persistent default</b> that is used for every boot.
-    /// </summary>
-    /// <remarks>
-    /// Unlike <see cref="SetNextBootEntryAsync"/> this change survives reboots and stays in effect
-    /// until it is changed again.
-    /// </remarks>
-    /// <param name="entry">The entry to boot by default. Must come from <see cref="GetBootEntriesAsync"/>.</param>
-    /// <param name="cancellationToken">Allows the caller to abort the operation.</param>
-    /// <exception cref="InvalidOperationException">The platform tool rejected the change.</exception>
-    Task SetDefaultBootEntryAsync(BootEntry entry, CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Makes the given entry the <b>persistent default</b> that is used for every boot.
+	/// </summary>
+	/// <remarks>
+	/// Unlike <see cref="SetNextBootEntryAsync"/> this change survives reboots and stays in effect
+	/// until it is changed again.
+	/// </remarks>
+	/// <param name="entry">The entry to boot by default. Must come from <see cref="GetBootEntriesAsync"/>.</param>
+	/// <param name="cancellationToken">Allows the caller to abort the operation.</param>
+	/// <exception cref="InvalidOperationException">The platform tool rejected the change.</exception>
+	Task SetDefaultBootEntryAsync(BootEntry entry, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Configures the machine to open the firmware (UEFI/BIOS) setup screen on the next boot,
-    /// so the user does not have to catch the vendor-specific hotkey during startup.
-    /// </summary>
-    /// <remarks>
-    /// This only arms the request; it does not reboot the machine. Not every firmware supports it,
-    /// and macOS has no scriptable equivalent at all.
-    /// </remarks>
-    /// <param name="cancellationToken">Allows the caller to abort the operation.</param>
-    /// <exception cref="NotSupportedException">
-    /// The firmware or operating system cannot be asked to enter setup programmatically.
-    /// </exception>
-    /// <exception cref="InvalidOperationException">The request failed, typically due to missing privileges.</exception>
-    Task RequestBootToFirmwareSetupAsync(CancellationToken cancellationToken = default);
+	/// <summary>
+	/// Configures the machine to open the firmware (UEFI/BIOS) setup screen on the next boot,
+	/// so the user does not have to catch the vendor-specific hotkey during startup.
+	/// </summary>
+	/// <remarks>
+	/// This only arms the request; it does not reboot the machine. Not every firmware supports it,
+	/// and macOS has no scriptable equivalent at all.
+	/// </remarks>
+	/// <param name="cancellationToken">Allows the caller to abort the operation.</param>
+	/// <exception cref="NotSupportedException">
+	/// The firmware or operating system cannot be asked to enter setup programmatically.
+	/// </exception>
+	/// <exception cref="InvalidOperationException">The request failed, typically due to missing privileges.</exception>
+	Task RequestBootToFirmwareSetupAsync(CancellationToken cancellationToken = default);
 }

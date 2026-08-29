@@ -28,7 +28,7 @@ namespace BootManager.Models;
 /// one-time override is armed for it, or - when no override exists - because it is the default.
 /// </param>
 public sealed record BootEntry(
-    string Id,
-    string Description,
-    bool IsCurrentDefault,
-    bool IsNextBoot);
+	string Id,
+	string Description,
+	bool IsCurrentDefault,
+	bool IsNextBoot);

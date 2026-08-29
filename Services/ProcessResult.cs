@@ -16,6 +16,6 @@ namespace BootManager.Services;
 /// <param name="StandardError">Everything the tool wrote to stderr, including trailing newlines.</param>
 public sealed record ProcessResult(int ExitCode, string StandardOutput, string StandardError)
 {
-    /// <summary>Whether the tool reported success, i.e. an exit code of 0.</summary>
-    public bool Succeeded => ExitCode == 0;
+	/// <summary>Whether the tool reported success, i.e. an exit code of 0.</summary>
+	public bool Succeeded => ExitCode == 0;
 }

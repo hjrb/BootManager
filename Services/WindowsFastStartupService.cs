@@ -29,51 +29,51 @@ namespace BootManager.Services;
 [SupportedOSPlatform("windows")]
 internal static class WindowsFastStartupService
 {
-    /// <summary>Registry key holding the power settings, including the Fast Startup flag.</summary>
-    private const string PowerKeyPath = @"SYSTEM\CurrentControlSet\Control\Session Manager\Power";
+	/// <summary>Registry key holding the power settings, including the Fast Startup flag.</summary>
+	private const string PowerKeyPath = @"SYSTEM\CurrentControlSet\Control\Session Manager\Power";
 
-    /// <summary>Name of the value that switches Fast Startup on (1) or off (0).</summary>
-    private const string HiberbootValueName = "HiberbootEnabled";
+	/// <summary>Name of the value that switches Fast Startup on (1) or off (0).</summary>
+	private const string HiberbootValueName = "HiberbootEnabled";
 
-    /// <summary>
-    /// Disables Fast Startup so that a shutdown really powers the machine down.
-    /// </summary>
-    /// <returns>
-    /// <see langword="true"/> when the setting was changed, <see langword="false"/> when Fast Startup
-    /// was already off and nothing had to be written.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// The registry key could not be opened for writing or the value could not be set, which almost
-    /// always means the process is not running as Administrator.
-    /// </exception>
-    internal static bool Disable()
-    {
-        // writable: true asks for write access up front, so a missing privilege fails here rather than
-        // half way through the change.
-        using var key = Registry.LocalMachine.OpenSubKey(PowerKeyPath, writable: true)
-            ?? throw new InvalidOperationException(
-                $@"The registry key 'HKEY_LOCAL_MACHINE\{PowerKeyPath}' could not be opened for writing. "
-                + "Administrator privileges are required to change the Fast Startup setting.");
+	/// <summary>
+	/// Disables Fast Startup so that a shutdown really powers the machine down.
+	/// </summary>
+	/// <returns>
+	/// <see langword="true"/> when the setting was changed, <see langword="false"/> when Fast Startup
+	/// was already off and nothing had to be written.
+	/// </returns>
+	/// <exception cref="InvalidOperationException">
+	/// The registry key could not be opened for writing or the value could not be set, which almost
+	/// always means the process is not running as Administrator.
+	/// </exception>
+	internal static bool Disable()
+	{
+		// writable: true asks for write access up front, so a missing privilege fails here rather than
+		// half way through the change.
+		using var key = Registry.LocalMachine.OpenSubKey(PowerKeyPath, writable: true)
+			?? throw new InvalidOperationException(
+				$@"The registry key 'HKEY_LOCAL_MACHINE\{PowerKeyPath}' could not be opened for writing. "
+				+ "Administrator privileges are required to change the Fast Startup setting.");
 
-        if (key.GetValue(HiberbootValueName) as int? == 0)
-        {
-            Log.Verbose("Fast Startup is already disabled; leaving the registry untouched");
-            return false;
-        }
+		if (key.GetValue(HiberbootValueName) as int? == 0)
+		{
+			Log.Verbose("Fast Startup is already disabled; leaving the registry untouched");
+			return false;
+		}
 
-        try
-        {
-            key.SetValue(HiberbootValueName, 0, RegistryValueKind.DWord);
-        }
-        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException)
-        {
-            throw new InvalidOperationException(
-                "Fast Startup could not be disabled because the registry value could not be written. "
-                + "Administrator privileges are required.",
-                ex);
-        }
+		try
+		{
+			key.SetValue(HiberbootValueName, 0, RegistryValueKind.DWord);
+		}
+		catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException)
+		{
+			throw new InvalidOperationException(
+				"Fast Startup could not be disabled because the registry value could not be written. "
+				+ "Administrator privileges are required.",
+				ex);
+		}
 
-        Log.Information("Windows Fast Startup disabled; the change takes effect on the next shutdown");
-        return true;
-    }
+		Log.Information("Windows Fast Startup disabled; the change takes effect on the next shutdown");
+		return true;
+	}
 }
