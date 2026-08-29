@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using BootManager.Models;
 using Serilog;
 
@@ -166,23 +167,33 @@ public static class CommandLineInterface
         return ExitSuccess;
     }
 
-    /// <summary>Prints the boot diagnostics, grouped by category.</summary>
+    /// <summary>Options controlling the JSON formatting of the <c>info</c> command's output.</summary>
+    private static readonly JsonSerializerOptions InfoJsonOptions = new()
+    {
+        WriteIndented = true,
+        // Category/Label/Value read naturally in camelCase JSON, and scripts consuming this output
+        // are more likely to expect that convention than PascalCase record property names.
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+    };
+
+    /// <summary>Prints the boot diagnostics as JSON, grouped by category.</summary>
+    /// <remarks>
+    /// JSON rather than the previous aligned-columns text: it is unambiguous to parse from scripts,
+    /// and the grouping still matches how <see cref="SystemInfoItem.Category"/> organises the data.
+    /// </remarks>
     private static async Task<int> PrintSystemInfoAsync()
     {
         var info = await BootManagerServiceFactory.CreateSystemInfoService().GetSystemInfoAsync();
 
-        foreach (var group in info.GroupBy(i => i.Category))
-        {
-            Console.WriteLine($"[{group.Key}]");
-
-            var labelWidth = group.Max(i => i.Label.Length);
-            foreach (var item in group)
+        var grouped = info
+            .GroupBy(i => i.Category)
+            .Select(group => new
             {
-                Console.WriteLine($"  {item.Label.PadRight(labelWidth)}  {item.Value}");
-            }
+                category = group.Key,
+                items = group.Select(i => new { label = i.Label, value = i.Value }),
+            });
 
-            Console.WriteLine();
-        }
+        Console.WriteLine(JsonSerializer.Serialize(grouped, InfoJsonOptions));
 
         return ExitSuccess;
     }
@@ -199,7 +210,7 @@ public static class CommandLineInterface
         Console.WriteLine("  setnext <id>     Boot the given entry on the next start only, then revert to the default.");
         Console.WriteLine("  setdef <id>      Make the given entry the permanent default.");
         Console.WriteLine("  bootUEFI         Open the UEFI firmware setup on the next boot.");
-        Console.WriteLine("  info             Print boot related system information.");
+        Console.WriteLine("  info             Print boot related system information as JSON.");
         Console.WriteLine("  help             Show this text.");
         Console.WriteLine();
         Console.WriteLine("Start without a command to open the graphical interface.");
