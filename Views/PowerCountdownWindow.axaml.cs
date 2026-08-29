@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Threading;
 using BootManager.Services;
 
 namespace BootManager.Views;
@@ -11,45 +12,60 @@ namespace BootManager.Views;
 /// </summary>
 public partial class PowerCountdownWindow : Window
 {
-    private readonly CancellationTokenSource _cts = new();
     private readonly TimeSpan _countdown = TimeSpan.FromSeconds(20);
+    private readonly DispatcherTimer _timer;
     private DateTimeOffset _startedAt;
+    private bool _finished;
 
     public PowerCountdownWindow()
     {
         InitializeComponent();
-        _startedAt = DateTimeOffset.UtcNow;
         CountdownText.Text = "Rebooting in 20 seconds";
-        CancelButton.Click += (_, _) =>
-        {
-            _cts.Cancel();
-            Close();
-        };
+        CancelButton.Click += (_, _) => Cancel();
+        NowButton.Click += (_, _) => _ = RebootNowAsync();
 
-        _ = RunCountdownAsync();
+        // DispatcherTimer ticks on the UI thread, so updating CountdownText.Text here is always safe.
+        _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
+        _timer.Tick += OnTimerTick;
+
+        _startedAt = DateTimeOffset.UtcNow;
+        _timer.Start();
     }
 
-    private async Task RunCountdownAsync()
+    private void OnTimerTick(object? sender, EventArgs e)
     {
-        try
+        var remaining = _countdown - (DateTimeOffset.UtcNow - _startedAt);
+        if (remaining <= TimeSpan.Zero)
         {
-            while (!_cts.IsCancellationRequested)
-            {
-                var remaining = _countdown - (DateTimeOffset.UtcNow - _startedAt);
-                if (remaining <= TimeSpan.Zero)
-                {
-                    Close();
-                    await SystemPowerService.ExecuteAsync(PowerActionKind.ImmediateReboot).ConfigureAwait(false);
-                    return;
-                }
+            _ = RebootNowAsync();
+            return;
+        }
 
-                CountdownText.Text = $"Rebooting in {Math.Ceiling(remaining.TotalSeconds)} seconds";
-                await Task.Delay(250, _cts.Token).ConfigureAwait(false);
-            }
-        }
-        catch (OperationCanceledException)
+        CountdownText.Text = $"Rebooting in {Math.Ceiling(remaining.TotalSeconds)} seconds";
+    }
+
+    private void Cancel()
+    {
+        if (_finished)
         {
-            // User cancelled the delayed reboot.
+            return;
         }
+
+        _finished = true;
+        _timer.Stop();
+        Close();
+    }
+
+    private async Task RebootNowAsync()
+    {
+        if (_finished)
+        {
+            return;
+        }
+
+        _finished = true;
+        _timer.Stop();
+        Close();
+        await SystemPowerService.ExecuteAsync(PowerActionKind.ImmediateReboot).ConfigureAwait(false);
     }
 }
