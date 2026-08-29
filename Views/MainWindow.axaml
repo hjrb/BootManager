@@ -32,10 +32,18 @@
         </Style>
     </Window.Styles>
 
-    <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="12">
+    <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="12">
         <TextBlock Grid.Row="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" />
 
-        <ListBox Grid.Row="1"
+        <Border Grid.Row="1" IsVisible="{Binding !IsElevated}"
+                Background="Goldenrod" Padding="10" CornerRadius="4" Margin="0,0,0,8">
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding ElevationMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+                <Button Grid.Column="1" Content="{Binding RestartElevatedLabel}" Command="{Binding RestartElevatedCommand}" />
+            </Grid>
+        </Border>
+
+        <ListBox Grid.Row="2"
                  ItemsSource="{Binding BootEntries}"
                  SelectedItem="{Binding SelectedEntry}">
             <ListBox.ItemTemplate>
@@ -51,22 +59,25 @@
             </ListBox.ItemTemplate>
         </ListBox>
 
-        <ProgressBar Grid.Row="2" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0" />
+        <ProgressBar Grid.Row="3" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0" />
 
-        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+        <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
             <Button Content="Refresh" Command="{Binding RefreshCommand}" />
             <Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" />
             <Button Content="Open UEFI Setup at Next Boot" Command="{Binding ConfigureFirmwareSetupCommand}" />
         </StackPanel>
 
-        <Border Grid.Row="0" Grid.RowSpan="4"
+        <Border Grid.Row="0" Grid.RowSpan="5"
                 VerticalAlignment="Bottom"
                 Background="{Binding IsNotificationError, Converter={x:Static localConv:NotificationBrushConverter.Instance}}"
                 IsVisible="{Binding NotificationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
                 Padding="10" Margin="0,0,0,48" CornerRadius="4">
-            <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="{Binding NotificationMessage}" TextWrapping="Wrap" Foreground="White" />
-                <Button Grid.Column="1" Content="✕" Command="{Binding DismissNotificationCommand}" Background="Transparent" Foreground="White" />
+            <Grid ColumnDefinitions="*,Auto,Auto">
+                <ScrollViewer Grid.Column="0" MaxHeight="140" VerticalScrollBarVisibility="Auto">
+                    <SelectableTextBlock Text="{Binding NotificationMessage}" TextWrapping="Wrap" Foreground="White" />
+                </ScrollViewer>
+                <Button Grid.Column="1" Content="Copy" Click="OnCopyNotification" Background="Transparent" Foreground="White" VerticalAlignment="Top" />
+                <Button Grid.Column="2" Content="✕" Command="{Binding DismissNotificationCommand}" Background="Transparent" Foreground="White" VerticalAlignment="Top" />
             </Grid>
         </Border>
     </Grid>

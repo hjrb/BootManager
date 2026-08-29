@@ -19,6 +19,14 @@ public partial class MainViewModel : ViewModelBase
     public MainViewModel(IBootManagerService bootManagerService)
     {
         _bootManagerService = bootManagerService;
+
+        IsElevated = ElevationService.IsElevated();
+        if (!IsElevated)
+        {
+            ElevationMessage = $"Not running as {ElevationService.RequiredPrivilegeName}. Enumerating and changing boot options will likely fail.";
+            Log.Verbose("Application is not running with elevated privileges ({Privilege})", ElevationService.RequiredPrivilegeName);
+        }
+
         _ = RefreshCommand.ExecuteAsync(null);
     }
 
@@ -26,6 +34,14 @@ public partial class MainViewModel : ViewModelBase
 
     [ObservableProperty]
     public partial BootEntry? SelectedEntry { get; set; }
+
+    [ObservableProperty]
+    public partial bool IsElevated { get; set; } = true;
+
+    [ObservableProperty]
+    public partial string ElevationMessage { get; set; } = string.Empty;
+
+    public string RestartElevatedLabel => ElevationService.RestartActionLabel;
 
     [ObservableProperty]
     public partial bool IsBusy { get; set; }
@@ -82,6 +98,21 @@ public partial class MainViewModel : ViewModelBase
 
     [RelayCommand]
     private void DismissNotification() => NotificationMessage = null;
+
+    [RelayCommand]
+    private void RestartElevated()
+    {
+        try
+        {
+            Log.Information("User requested restart with elevated privileges");
+            ElevationService.RestartElevated();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to restart elevated");
+            ShowNotification(ex.Message, isError: true);
+        }
+    }
 
     private async Task RunGuardedAsync(Func<Task> action)
     {
