@@ -45,6 +45,13 @@ sealed class Program
     {
         var isCommandLine = CommandLineInterface.IsCommandLineInvocation(args);
 
+        // First statement of the program, so the console Windows may have created for GUI mode is gone
+        // before it can become visible.
+        if (!isCommandLine)
+        {
+            CommandLineInterface.DetachFromOwnConsole();
+        }
+
         // The configuration provider only understands switch syntax ("--key value", "key=value") and
         // throws on a bare word, so the command and its operands are withheld from it.
         var configurationArgs = isCommandLine ? args.Skip(1).Where(a => a.StartsWith('-')).ToArray() : args;
@@ -67,9 +74,6 @@ sealed class Program
         {
             if (isCommandLine)
             {
-                // Needed because this is a GUI executable and would otherwise have nowhere to print to.
-                CommandLineInterface.AttachToParentConsole();
-
                 // The UI framework is never started in this mode, so blocking here is safe.
                 return CommandLineInterface.RunAsync(args).GetAwaiter().GetResult();
             }

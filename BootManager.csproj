@@ -1,6 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <!-- Console subsystem, not WinExe: only then does a Windows shell wait for the process and keep
+         the CLI output in front of the prompt. The console window that Windows creates when there is
+         no shell is disposed of by CommandLineInterface.DetachFromOwnConsole. -->
+    <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

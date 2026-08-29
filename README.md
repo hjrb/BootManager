@@ -100,12 +100,22 @@ BootManager setnext <id>     Boot that entry on the next start only
 BootManager setdef <id>      Make that entry the permanent default
 BootManager bootUEFI         Open UEFI setup at the next boot
 BootManager info             Print the system information
+BootManager disableFastStartup
+                             Windows only: turn Fast Startup off
 BootManager help             Show the available commands
 ```
+
+`disableFastStartup` clears the `HiberbootEnabled` power setting, so shutting Windows down really
+powers the machine off instead of hibernating the kernel. Hibernation itself stays available. The
+change applies from the next shutdown on.
 
 Every command except `help` needs elevated rights. Unlike the window, the command line **does not**
 offer to restart itself — it prints an error and exits with a non-zero code, so scripts can react to it.
 Start your console as Administrator, or use `sudo`, before running these.
+
+Starting the program without a command opens the window. When you do that from a console, the console
+stays occupied until you close the window — that is the same executable behaving like any other console
+program. Use `Start-Process BootManager` or `start BootManager` to get your prompt back right away.
 
 ### Example
 
