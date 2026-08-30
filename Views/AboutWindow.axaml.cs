@@ -25,10 +25,10 @@ public partial class AboutWindow : Window
 		AppInfo.OpenInDefaultApplication(AppInfo.RepositoryUrl);
 
 	private void OnOpenLicense(object? sender, RoutedEventArgs e) =>
-		OpenDocument(AppInfo.LicenseFileName, AppInfo.LicenseUrl);
+		OpenDocument(AppInfo.LicenseUrl, AppInfo.LicenseFileName);
 
 	private void OnOpenThirdPartyNotices(object? sender, RoutedEventArgs e) =>
-		OpenDocument(AppInfo.ThirdPartyNoticesFileName, AppInfo.ThirdPartyNoticesUrl);
+		OpenDocument(AppInfo.ThirdPartyNoticesUrl, AppInfo.ThirdPartyNoticesHtmlFileName, AppInfo.ThirdPartyNoticesFileName);
 
 	/// <summary>
 	/// Opens the copy of a licence document that was deployed with the application, falling back to
@@ -38,10 +38,13 @@ public partial class AboutWindow : Window
 	/// The local copy is preferred because it is the one that belongs to <em>this</em> build, and
 	/// because it also works without a network connection.
 	/// </remarks>
-	/// <param name="fileName">Name of the deployed file, e.g. "LICENSE".</param>
 	/// <param name="fallbackUrl">Address of the same document on the project page.</param>
-	private static void OpenDocument(string fileName, string fallbackUrl) =>
-		AppInfo.OpenInDefaultApplication(AppInfo.FindDeployedDocument(fileName) ?? fallbackUrl);
+	/// <param name="fileNames">
+	/// Names of the deployed file, most readable form first: a published build carries the compliance
+	/// document as HTML, a plain source build only as Markdown.
+	/// </param>
+	private static void OpenDocument(string fallbackUrl, params string[] fileNames) =>
+		AppInfo.OpenInDefaultApplication(AppInfo.FindDeployedDocument(fileNames) ?? fallbackUrl);
 
 	private void OnClose(object? sender, RoutedEventArgs e) => Close();
 }

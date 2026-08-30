@@ -54,6 +54,41 @@ public partial class MainWindow : Window
 		await new AboutWindow().ShowDialog(this);
 
 	/// <summary>
+	/// Opens the README section explaining why removable media are missing from the entry list.
+	/// </summary>
+	/// <remarks>
+	/// Firmware creates boot entries for USB sticks and optical drives during power-on and discards them
+	/// again, so the list legitimately differs from one start to the next. That surprises users often
+	/// enough to deserve its own button rather than only a tooltip.
+	/// </remarks>
+	private void OnBootEntryHelpClick(object? sender, RoutedEventArgs e) =>
+		AppInfo.OpenInDefaultApplication(AppInfo.GetBootEntryVisibilityHelpTarget());
+
+	/// <summary>
+	/// Arms the firmware setup request, behind a countdown on platforms that restart to do so.
+	/// </summary>
+	private async void OnFirmwareSetupButtonClick(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is not MainViewModel viewModel)
+		{
+			return;
+		}
+
+		if (!viewModel.FirmwareSetupRestartsImmediately)
+		{
+			await viewModel.ConfigureFirmwareSetupCommand.ExecuteAsync(null);
+			return;
+		}
+
+		var dialog = new PowerCountdownWindow(
+			"Restart into UEFI Setup",
+			"Restarting",
+			viewModel.FirmwareSetupCommand,
+			() => viewModel.ConfigureFirmwareSetupCommand.ExecuteAsync(null));
+		await dialog.ShowDialog(this);
+	}
+
+	/// <summary>
 	/// Writes text to the system clipboard, ignoring the case where no clipboard is available
 	/// (which can happen on a headless or unusual desktop session).
 	/// </summary>
@@ -86,6 +121,8 @@ public partial class MainWindow : Window
 			{
 				Header = SystemPowerService.GetLabel(action),
 			};
+
+			ToolTip.SetTip(item, SystemPowerService.GetTooltip(action));
 
 			item.Click += async (_, _) =>
 			{

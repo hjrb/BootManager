@@ -31,7 +31,7 @@ public static class CommandLineInterface
 
 	/// <summary>The commands recognised as the first argument, compared case-insensitively.</summary>
 	private static readonly string[] KnownCommands =
-		["list", "setnext", "setdef", "bootuefi", "info", "disablefaststartup", "reboot", "shutdown", "help", "--help", "-h"];
+		["list", "setnext", "setdef", "bootuefi", "info", "disablefaststartup", "reboot", "reboot-graceful", "hardreboot", "shutdown", "help", "--help", "-h"];
 
 	/// <summary>
 	/// Decides whether the given command line asks for console mode rather than the window.
@@ -66,7 +66,7 @@ public static class CommandLineInterface
 			Console.Error.WriteLine(
 				$"Error: this command requires {ElevationService.RequiredPrivilegeName} privileges. "
 				+ "Re-run it from an elevated console.");
-			Log.Error("Command {Command} refused: missing {Privilege} privileges", command, ElevationService.RequiredPrivilegeName);
+			Log.Warning("Command {Command} refused: missing {Privilege} privileges", command, ElevationService.RequiredPrivilegeName);
 			return ExitFailure;
 		}
 
@@ -80,7 +80,12 @@ public static class CommandLineInterface
 				"bootuefi" => await BootToFirmwareSetupAsync(),
 				"info" => await PrintSystemInfoAsync(),
 				"disablefaststartup" => DisableFastStartup(),
-				"reboot" => await ExecutePowerActionAsync(PowerActionKind.ImmediateReboot, "Rebooting now."),
+				"reboot" or "reboot-graceful" => await ExecutePowerActionAsync(
+					PowerActionKind.GracefulReboot,
+					"Reboot requested. Running applications may prompt about unsaved work, or cancel it."),
+				"hardreboot" => await ExecutePowerActionAsync(
+					PowerActionKind.ImmediateReboot,
+					"Rebooting now, without asking applications."),
 				"shutdown" => await ExecutePowerActionAsync(PowerActionKind.Shutdown, "Shutting down now."),
 				_ => Unreachable(),
 			};
@@ -193,7 +198,7 @@ public static class CommandLineInterface
 		return ExitSuccess;
 	}
 
-	/// <summary>Triggers an immediate reboot or shutdown, without the GUI's delayed countdown.</summary>
+	/// <summary>Triggers a reboot or shutdown, without the GUI's delayed countdown.</summary>
 	private static async Task<int> ExecutePowerActionAsync(PowerActionKind action, string confirmationMessage)
 	{
 		await SystemPowerService.ExecuteAsync(action);
@@ -255,8 +260,14 @@ public static class CommandLineInterface
 		  info             Print boot related system information as JSON.
 		  disableFastStartup
 		                   Windows only: turn off Fast Startup, so a shutdown really powers off.
-		  reboot           Reboot the machine immediately.
+		  reboot           Reboot the machine, letting applications close first. They may prompt
+		                   about unsaved work, and can cancel the reboot.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.GracefulReboot)}
+		  reboot-graceful  Alias for 'reboot'.
+		  hardreboot       Reboot immediately, terminating applications without warning.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.ImmediateReboot)}
 		  shutdown         Shut down the machine immediately.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.Shutdown)}
 		  help             Show this text.
 
 		Start without a command to open the graphical interface.

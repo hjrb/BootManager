@@ -91,6 +91,20 @@ if (-not (Test-Path $projectPath)) {
 	throw "Project file not found at '$projectPath'. Run this script from the repository root."
 }
 
+# The documents that travel with the binaries do so as HTML rather than Markdown, because a Markdown
+# file next to an executable is of no use to someone without an editor that renders it.
+$markdownConverter = Join-Path $PSScriptRoot 'Convert-MarkdownToHtml.ps1'
+$documents = @(
+	@{ Source = 'README.md';              Target = 'README.html';              Title = 'BootManager' }
+	@{ Source = 'THIRD-PARTY-NOTICES.md'; Target = 'THIRD-PARTY-NOTICES.html'; Title = 'BootManager - Third-party notices' }
+)
+
+foreach ($required in @($markdownConverter) + ($documents | ForEach-Object { Join-Path $PSScriptRoot $_.Source })) {
+	if (-not (Test-Path $required)) {
+		throw "Required file not found at '$required'."
+	}
+}
+
 if ($Clean -and (Test-Path $OutputPath)) {
 	Write-Host "Cleaning $OutputPath" -ForegroundColor Yellow
 	Remove-Item -Path $OutputPath -Recurse -Force
@@ -168,6 +182,13 @@ foreach ($target in $Targets) {
 	$publishedSettings = Get-Content -Path $publishedSettingsPath -Raw | ConvertFrom-Json
 	$publishedSettings.Serilog.MinimumLevel = 'Warning'
 	$publishedSettings | ConvertTo-Json -Depth 10 | Set-Content -Path $publishedSettingsPath -Encoding utf8
+
+	foreach ($document in $documents) {
+		& $markdownConverter `
+			-Path (Join-Path $PSScriptRoot $document.Source) `
+			-Destination (Join-Path $targetOutput $document.Target) `
+			-Title $document.Title
+	}
 
 	# DebugType=None only suppresses this project's symbols. The native dependencies of the UI
 	# framework (Skia, HarfBuzz) ship their own .pdb files, which are copied in regardless and would

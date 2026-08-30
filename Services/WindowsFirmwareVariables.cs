@@ -101,10 +101,11 @@ internal static class WindowsFirmwareVariables
 	/// <remarks>
 	/// The real structure ends in a variable length array. Declaring a single fixed entry is the
 	/// standard simplification and is safe as long as <see cref="PrivilegeCount"/> stays 1.
-	/// <c>LayoutKind.Sequential</c> guarantees the fields are laid out in the declared order, which is
-	/// what the native side expects.
+	/// <c>Pack = 4</c> is required: the native structure is 4 byte aligned, so the 64 bit
+	/// <see cref="Luid"/> sits at offset 4. Without it the runtime would align it to offset 8 and the
+	/// kernel would read a garbage identifier, which surfaces as <c>ERROR_NOT_ALL_ASSIGNED</c> (1300).
 	/// </remarks>
-	[StructLayout(LayoutKind.Sequential)]
+	[StructLayout(LayoutKind.Sequential, Pack = 4)]
 	private struct TokenPrivileges
 	{
 		/// <summary>Number of privileges that follow. Always 1 here.</summary>
@@ -183,7 +184,7 @@ internal static class WindowsFirmwareVariables
 		var read = GetFirmwareEnvironmentVariableW(name, EfiGlobalVariableGuid, buffer, (uint)buffer.Length);
 		if (read == 0)
 		{
-			Log.Verbose("Firmware variable {Name} could not be read (Win32 error {Error})", name, Marshal.GetLastWin32Error());
+			Log.Information("Firmware variable {Name} could not be read (Win32 error {Error})", name, Marshal.GetLastWin32Error());
 			return null;
 		}
 

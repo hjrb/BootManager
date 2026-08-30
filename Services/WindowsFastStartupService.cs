@@ -57,7 +57,7 @@ internal static class WindowsFastStartupService
 
 		if (key.GetValue(HiberbootValueName) as int? == 0)
 		{
-			Log.Verbose("Fast Startup is already disabled; leaving the registry untouched");
+			Log.Information("Fast Startup is already disabled; leaving the registry untouched");
 			return false;
 		}
 

@@ -102,7 +102,7 @@ public sealed class LinuxSystemInfoService : ISystemInfoService
 		}
 		catch (Exception ex)
 		{
-			Log.Verbose(ex, "mokutil is not available, Secure Boot state cannot be determined");
+			Log.Information(ex, "mokutil is not available, Secure Boot state cannot be determined");
 			return "Unknown (mokutil is not installed)";
 		}
 	}
@@ -126,7 +126,7 @@ public sealed class LinuxSystemInfoService : ISystemInfoService
 		}
 		catch (Exception ex)
 		{
-			Log.Verbose(ex, "systemd-analyze is not available, boot duration cannot be determined");
+			Log.Information(ex, "systemd-analyze is not available, boot duration cannot be determined");
 			return "Unknown (systemd-analyze is not available)";
 		}
 	}
@@ -149,7 +149,8 @@ public sealed class LinuxSystemInfoService : ISystemInfoService
 		}
 		catch (Exception ex)
 		{
-			Log.Verbose(ex, "Could not read {Path}", path);
+			// A file that exists but cannot be read is not the normal "field not populated" case.
+			Log.Warning(ex, "Could not read {Path}", path);
 			return null;
 		}
 	}

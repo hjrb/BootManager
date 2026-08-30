@@ -58,31 +58,38 @@
 
 	<Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
 		<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-			<TextBlock Grid.Column="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" VerticalAlignment="Center" />
+			<TextBlock Grid.Column="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
+					   ToolTip.Tip="Reads and changes the boot entries stored in the firmware's NVRAM." />
 			<Button Grid.Column="1" Content="About" Click="OnAboutButtonClick" ToolTip.Tip="Version, licence and third-party notices." />
 		</Grid>
 
 		<Border Grid.Row="1" IsVisible="{Binding !IsElevated}"
-				Background="Goldenrod" Padding="10" CornerRadius="4" Margin="0,0,0,8">
+				Background="Goldenrod" Padding="10" CornerRadius="4" Margin="0,0,0,8"
+				ToolTip.Tip="Firmware variables can only be read and written with elevated privileges.">
 			<Grid ColumnDefinitions="*,Auto">
 				<TextBlock Grid.Column="0" Text="{Binding ElevationMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
-				<Button Grid.Column="1" Content="{Binding RestartElevatedLabel}" Command="{Binding RestartElevatedCommand}" />
+				<Button Grid.Column="1" Content="{Binding RestartElevatedLabel}" Command="{Binding RestartElevatedCommand}"
+						ToolTip.Tip="Starts the application again with elevated privileges and closes this instance." />
 			</Grid>
 		</Border>
 
 		<TabControl Grid.Row="2">
-			<TabItem Header="Boot Options">
+			<TabItem Header="Boot Options" ToolTip.Tip="The boot entries the firmware offers, and the actions that change them.">
 				<Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
 					<ListBox Grid.Row="0"
 							 ItemsSource="{Binding BootEntries}"
-							 SelectedItem="{Binding SelectedEntry}">
+							 SelectedItem="{Binding SelectedEntry}"
+							 ToolTip.Tip="Boot entries in firmware boot order. Select one, then use the buttons below.&#x0a;Removable media only appear when they were attached while the machine powered on.">
 						<ListBox.ItemTemplate>
 							<DataTemplate>
-								<Border Padding="8" CornerRadius="4" Classes.current="{Binding IsCurrentDefault}">
+								<Border Padding="8" CornerRadius="4" Classes.current="{Binding IsCurrentDefault}"
+										ToolTip.Tip="{Binding Id, StringFormat='Firmware boot entry {0}'}">
 									<StackPanel Orientation="Horizontal">
 										<TextBlock Text="{Binding Description}" VerticalAlignment="Center" />
-										<TextBlock Text="Current default" Classes="tag" IsVisible="{Binding IsCurrentDefault}" />
-										<TextBlock Text="Next boot" Classes="tag" IsVisible="{Binding IsNextBoot}" />
+										<TextBlock Text="Current default" Classes="tag" IsVisible="{Binding IsCurrentDefault}"
+												   ToolTip.Tip="First in BootOrder: the entry used on every boot." />
+										<TextBlock Text="Next boot" Classes="tag" IsVisible="{Binding IsNextBoot}"
+												   ToolTip.Tip="Set in BootNext: used once on the next boot, then cleared by the firmware." />
 									</StackPanel>
 								</Border>
 							</DataTemplate>
@@ -90,26 +97,30 @@
 					</ListBox>
 
 					<WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">
-						<Button Content="Refresh" Command="{Binding RefreshCommand}" />
-						<Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="One-time override: applies to the next boot only, then reverts to the default." />
-						<Button Content="Set as Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="Persistent: applies to every boot until changed again." />
-						<Button Content="Open UEFI Setup at Next Boot" Command="{Binding ConfigureFirmwareSetupCommand}" />
-						<Button x:Name="PowerButton" Content="Power" Click="OnPowerButtonClick" />
+						<Button Content="?" Width="32" HorizontalContentAlignment="Center" FontWeight="Bold" Click="OnBootEntryHelpClick"
+								ToolTip.Tip="Not everything visible? Click here..." />
+						<Button Content="Refresh" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding RefreshTooltip}" />
+						<Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding NextBootTooltip}" />
+						<Button Content="Set as Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding DefaultBootTooltip}" />
+						<Button Content="Open UEFI Setup at Next Boot" Click="OnFirmwareSetupButtonClick" ToolTip.Tip="{Binding FirmwareSetupTooltip}" />
+						<Button x:Name="PowerButton" Content="Power" Click="OnPowerButtonClick" ToolTip.Tip="{Binding PowerTooltip}" />
 					</WrapPanel>
 				</Grid>
 			</TabItem>
 
-			<TabItem Header="System Information">
+			<TabItem Header="System Information" ToolTip.Tip="Firmware, platform and disk facts collected from this machine.">
 				<Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
-					<ScrollViewer Grid.Row="0">
-						<ItemsControl ItemsSource="{Binding SystemInfoGroups}">
+					<ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
+						<ItemsControl ItemsSource="{Binding SystemInfoGroups}" HorizontalAlignment="Stretch">
 							<ItemsControl.ItemTemplate>
 								<DataTemplate>
-									<Expander Header="{Binding Category}" IsExpanded="True" Margin="0,0,0,4">
-										<ItemsControl ItemsSource="{Binding Items}" Classes="infoRows">
+									<Expander Header="{Binding Category}" IsExpanded="True" Margin="0,0,0,4"
+											  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+											  ToolTip.Tip="Click to collapse or expand this category.">
+										<ItemsControl ItemsSource="{Binding Items}" Classes="infoRows" HorizontalAlignment="Stretch">
 											<ItemsControl.ItemTemplate>
 												<DataTemplate>
-													<Border Padding="8,5">
+													<Border Padding="8,5" ToolTip.Tip="{Binding Value}">
 														<Grid ColumnDefinitions="180,*">
 															<SelectableTextBlock Grid.Column="0" Text="{Binding Label}" Classes="infoLabel" />
 															<SelectableTextBlock Grid.Column="1" Text="{Binding Value}" Classes="infoValue" />
@@ -125,18 +136,19 @@
 					</ScrollViewer>
 
 					<WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">
-						<Button Content="Refresh" Command="{Binding RefreshSystemInfoCommand}" />
+						<Button Content="Refresh" Command="{Binding RefreshSystemInfoCommand}" ToolTip.Tip="Collects the diagnostic values again." />
 						<Button Content="Copy All" Click="OnCopySystemInfo" ToolTip.Tip="Copies all values as text, ready to paste into a bug report." />
 					</WrapPanel>
 				</Grid>
 			</TabItem>
 
-			<TabItem Header="Command Line">
+			<TabItem Header="Command Line" ToolTip.Tip="How to drive this application from a script or terminal.">
 				<Grid RowDefinitions="Auto,*,Auto" Margin="0,8,0,0">
 					<TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,8"
 							   Text="The same executable also works without a window. Started with one of these commands it prints its result to the console and exits, which makes it usable from scripts." />
 					<ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto">
-						<SelectableTextBlock Classes="console" Text="{Binding CommandLineHelpText}" Padding="4" />
+						<SelectableTextBlock Classes="console" Text="{Binding CommandLineHelpText}" Padding="4"
+											 ToolTip.Tip="Select any part of this text to copy it directly." />
 					</ScrollViewer>
 					<WrapPanel Grid.Row="2" HorizontalAlignment="Right" Margin="0,8,0,0">
 						<Button Content="Copy" Click="OnCopyCommandLineHelp" ToolTip.Tip="Copies the help text as shown by 'BootManager help'." />
@@ -145,7 +157,8 @@
 			</TabItem>
 		</TabControl>
 
-		<ProgressBar Grid.Row="3" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0" />
+		<ProgressBar Grid.Row="3" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0"
+					 ToolTip.Tip="An operation is running." />
 
 		<Border Grid.Row="0" Grid.RowSpan="4"
 				VerticalAlignment="Bottom"
@@ -154,10 +167,13 @@
 				Padding="10" Margin="0,0,0,48" CornerRadius="4">
 			<Grid ColumnDefinitions="*,Auto,Auto">
 				<ScrollViewer Grid.Column="0" MaxHeight="140" VerticalScrollBarVisibility="Auto">
-					<SelectableTextBlock Text="{Binding NotificationMessage}" TextWrapping="Wrap" Foreground="White" />
+					<SelectableTextBlock Text="{Binding NotificationMessage}" TextWrapping="Wrap" Foreground="White"
+										 ToolTip.Tip="Result of the last operation. The text can be selected and copied." />
 				</ScrollViewer>
-				<Button Grid.Column="1" Content="Copy" Click="OnCopyNotification" Background="Transparent" Foreground="White" VerticalAlignment="Top" />
-				<Button Grid.Column="2" Content="✕" Command="{Binding DismissNotificationCommand}" Background="Transparent" Foreground="White" VerticalAlignment="Top" />
+				<Button Grid.Column="1" Content="Copy" Click="OnCopyNotification" Background="Transparent" Foreground="White" VerticalAlignment="Top"
+						ToolTip.Tip="Copies this message to the clipboard." />
+				<Button Grid.Column="2" Content="✕" Command="{Binding DismissNotificationCommand}" Background="Transparent" Foreground="White" VerticalAlignment="Top"
+						ToolTip.Tip="Hides this message." />
 			</Grid>
 		</Border>
 	</Grid>

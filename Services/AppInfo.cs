@@ -24,11 +24,33 @@ public static class AppInfo
 	/// <summary>The open source compliance document, used when no local copy was deployed.</summary>
 	public const string ThirdPartyNoticesUrl = "https://github.com/hjrb/BootManager/blob/main/THIRD-PARTY-NOTICES.md";
 
+	/// <summary>
+	/// The README section explaining why removable media do not always appear in the boot entry list.
+	/// Used when no local copy of the documentation was deployed.
+	/// </summary>
+	public const string BootEntryVisibilityHelpUrl =
+		"https://github.com/hjrb/BootManager/blob/main/README.md#why-dont-i-see-my-usb-stick-or-dvd";
+
+	/// <summary>
+	/// Anchor of that same section inside the deployed <c>README.html</c>. The generated file uses
+	/// GitHub's heading anchors, so this one string addresses the section in both copies.
+	/// </summary>
+	private const string BootEntryVisibilityAnchor = "#why-dont-i-see-my-usb-stick-or-dvd";
+
 	/// <summary>File name of the licence as it is deployed next to the executable.</summary>
 	public const string LicenseFileName = "LICENSE";
 
 	/// <summary>File name of the compliance document as it is deployed next to the executable.</summary>
 	public const string ThirdPartyNoticesFileName = "THIRD-PARTY-NOTICES.md";
+
+	/// <summary>
+	/// The readable form of the compliance document produced when publishing. Preferred over the
+	/// Markdown source, which a machine without a Markdown viewer shows as plain text at best.
+	/// </summary>
+	public const string ThirdPartyNoticesHtmlFileName = "THIRD-PARTY-NOTICES.html";
+
+	/// <summary>The user documentation as it is deployed next to the executable.</summary>
+	public const string DocumentationHtmlFileName = "README.html";
 
 	private static readonly Assembly EntryAssembly = Assembly.GetEntryAssembly() ?? typeof(AppInfo).Assembly;
 
@@ -65,18 +87,46 @@ public static class AppInfo
 
 	/// <summary>
 	/// Returns the full path of a document deployed next to the executable, or <see langword="null"/>
-	/// when it is not there.
+	/// when none of them is there.
 	/// </summary>
-	/// <param name="fileName">File name as it appears in the publish output, e.g. "LICENSE".</param>
+	/// <param name="fileNames">
+	/// File names as they appear in the publish output, e.g. "LICENSE". They are tried in order, so the
+	/// most readable form of a document comes first.
+	/// </param>
 	/// <remarks>
 	/// A published build ships these files, but a developer running from a source checkout may not have
 	/// copied them yet, and a user is free to delete them. The caller falls back to the online copy in
 	/// that case, so the About screen never offers a dead link.
 	/// </remarks>
-	public static string? FindDeployedDocument(string fileName)
+	public static string? FindDeployedDocument(params string[] fileNames)
 	{
-		var path = Path.Combine(AppContext.BaseDirectory, fileName);
-		return File.Exists(path) ? path : null;
+		foreach (var fileName in fileNames)
+		{
+			var path = Path.Combine(AppContext.BaseDirectory, fileName);
+			if (File.Exists(path))
+			{
+				return path;
+			}
+		}
+
+		return null;
+	}
+
+	/// <summary>
+	/// Returns where to send a user asking why a USB stick is missing from the boot entry list.
+	/// </summary>
+	/// <remarks>
+	/// The deployed <c>README.html</c> is preferred because it works without a network connection. It has
+	/// to be handed over as a <c>file://</c> URI rather than as a path: a browser only jumps to a section
+	/// when the anchor is part of a URI, and appending "#..." to a plain path would make it part of the
+	/// file name instead.
+	/// </remarks>
+	public static string GetBootEntryVisibilityHelpTarget()
+	{
+		var documentation = FindDeployedDocument(DocumentationHtmlFileName);
+		return documentation is null
+			? BootEntryVisibilityHelpUrl
+			: new Uri(documentation).AbsoluteUri + BootEntryVisibilityAnchor;
 	}
 
 	/// <summary>

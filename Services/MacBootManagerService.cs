@@ -133,6 +133,23 @@ public sealed partial class MacBootManagerService : IBootManagerService
 		SetNextBootEntryAsync(entry, cancellationToken);
 
 	/// <inheritdoc />
+	/// <remarks>Irrelevant on macOS: the request itself is not supported.</remarks>
+	public bool FirmwareSetupRestartsImmediately => false;
+
+	/// <inheritdoc />
+	public string EnumerateCommand => "diskutil list, then bless --getBoot";
+
+	/// <inheritdoc />
+	public string SetNextBootCommand => "bless --device /dev/<id> --setBoot";
+
+	/// <inheritdoc />
+	/// <remarks>macOS has no one-time override, so this is the same command as the next boot one.</remarks>
+	public string SetDefaultBootCommand => "bless --device /dev/<id> --setBoot";
+
+	/// <inheritdoc />
+	public string FirmwareSetupCommand => "Not available on macOS";
+
+	/// <inheritdoc />
 	/// <remarks>
 	/// Always throws. Apple provides no command or NVRAM variable that opens a firmware setup screen -
 	/// Macs simply do not have a user-facing one. The startup picker is reached by holding a key during
@@ -140,7 +157,7 @@ public sealed partial class MacBootManagerService : IBootManagerService
 	/// </remarks>
 	public Task RequestBootToFirmwareSetupAsync(CancellationToken cancellationToken = default)
 	{
-		Log.Verbose("RequestBootToFirmwareSetupAsync invoked on macOS, which has no scriptable firmware setup entry point");
+		Log.Information("RequestBootToFirmwareSetupAsync invoked on macOS, which has no scriptable firmware setup entry point");
 		throw new NotSupportedException(
 			"macOS does not support scripting entry into firmware setup. Hold Option (Intel Macs) or the power button (Apple Silicon) during startup instead.");
 	}

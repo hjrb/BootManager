@@ -34,17 +34,71 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     | `setdef <id>` | Set the persistent default boot entry. |
     | `bootUEFI` | Configure the system to open UEFI setup at the next boot. |
     | `info` | Print the boot related system information. |
+    | `disableFastStartup` | Windows only: turn Fast Startup off. |
+    | `reboot` / `reboot-graceful` | Reboot gracefully; applications may prompt or cancel it. |
+    | `hardreboot` | Reboot immediately, terminating applications without warning. |
+    | `shutdown` | Shut the machine down immediately. |
 
     When a CLI command is invoked without Administrator/root privileges the application must simply
     fail with an error message and a non-zero exit code - it must **not** try to re-launch itself
     elevated, since that would detach from the console and lose the output.
+
+    The `help` output must support showing the concrete command each power action runs on the current
+    operating system, so the text stays accurate per platform instead of describing only one of them.
 11. Add a power control in the main window that opens a popup menu with the supported shutdown/reboot actions for the current OS:
-    - Immediate reboot.
+    - Reboot now, **graceful**.
+    - Reboot now, **forced**.
     - Delayed reboot (20 seconds, with an on-screen countdown and a cancel button).
     - Shutdown.
     - Full shutdown on Windows only; hidden on Linux and macOS where the OS does not expose a separate action.
     - Unsupported actions for a given OS must be hidden instead of shown as disabled items.
     - On Linux and macOS, the implementation should still expose the closest equivalent operations that are actually supported by the platform, such as `systemctl reboot`/`poweroff` and `shutdown -r now`/`shutdown -h now`.
+12. The application must support two distinct kinds of restart, because the difference decides whether
+    unsaved work survives:
+    - **Graceful** must route through the operating system mechanism that lets applications ask the
+      user about unsaved work. It must therefore be allowed to *not* reboot when an application
+      refuses, and that outcome must not be reported as a failure.
+    - **Forced/hard** must reboot straight away and terminate applications without warning.
+    - The two must be separate menu entries and separate CLI commands; a single "reboot" action that
+      silently picks one is not sufficient.
+    - The graceful path must use `shutdown.exe /r /t 0` **without** `/f` on Windows (a timeout greater
+      than zero would imply `/f`), `systemctl reboot --check-inhibitors=yes` on Linux (so inhibitor
+      locks are honoured instead of being bypassed by root), and the AppleEvent
+      `osascript -e 'tell application "System Events" to restart'` on macOS.
+13. Because neither `systemctl reboot` on Linux nor `shutdown -r now` on macOS gives applications any
+    chance to prompt, every action that restarts the machine without the user explicitly asking for an
+    immediate restart must be put behind the countdown window:
+    - The countdown window must support being reused for any deferred action, not only the plain reboot.
+    - It must offer **Cancel**, an immediate variant, and a **Close apps** button that asks the running
+      applications of the user's desktop session to close themselves. This must be an action of the
+      application, performed the same way on every platform - not a delegation to an operating system
+      reboot command that happens to ask applications on its way down.
+    - **Close apps** must only *ask*: an application that refuses must be reported by name and must not
+      be killed. Processes that carry the desktop session itself must be excluded, since closing them
+      would end the session instead of an application.
+    - Pressing **Close apps** must stop the countdown, so that an application's "unsaved changes" prompt
+      cannot be cut short by the restart the countdown would otherwise trigger.
+    - It must display the command that will run when the countdown ends.
+    - The countdown length, the grace period of **Close apps** and both lists of protected processes
+      must be settings in `appsettings.json`, not compiled-in constants: the protected names differ per
+      desktop environment and a user must be able to add a missing one without rebuilding. Setting
+      names must say what they mean including their unit.
+14. Requesting the firmware setup screen must support platforms where the request itself reboots:
+    - The service layer must expose whether the request restarts the machine immediately.
+    - Where it does (Linux, `systemctl reboot --firmware-setup`), the UI must show the countdown first
+      so the user can save work; where it does not (Windows), it must arm the request without restarting.
+15. Every interactive element must have a tooltip. For anything that runs an external tool or a native
+    API, the tooltip must support showing the exact command or API call, resolved for the current
+    operating system, and it must be derived from the same source the execution path uses so that the
+    two cannot drift apart.
+16. The System Information panels must support using the full width of their container.
+17. The boot entry list must support explaining its own gaps. Entries for removable media (USB sticks,
+    optical drives) are created by the firmware during power-on and discarded again, so the list
+    legitimately differs between starts and cannot show a medium that was attached afterwards. A help
+    button next to the list must open the user documentation section that explains this, and the user
+    documentation must cover the common causes: medium absent at power-on, medium not bootable,
+    firmware Fast Boot skipping device enumeration, Secure Boot rejection, legacy/CSM mode, and
+    firmwares that never persist such entries at all.
 | Lifetime | Stays in effect until changed again | Consumed by the firmware at the next boot, then the default applies again |
 | UEFI variable | `BootOrder` (its first entry) | `BootNext` |
 | Windows (`bcdedit`) | `{fwbootmgr}` `displayorder` (first entry) | `{fwbootmgr}` `bootsequence` |
@@ -86,6 +140,10 @@ of the default (persistent startup disk).
   - A portable framework-dependent build without a runtime identifier that runs on all supported
     operating systems.
 - A brief `README.md` must explain to end users how to use the tool.
+- Every published build must carry that documentation as a single self-contained `README.html`, since a
+  Markdown file next to an executable is unreadable for a user without a viewer for it. It must be
+  generated from `README.md` during publishing rather than maintained separately, so the two cannot
+  drift apart, and it must need no internet connection and no additional files to display.
 
 ## Implementation Notes
 - Avalonia MVVM app (`BootManager.csproj`), NuGet packages: `Microsoft.Extensions.Configuration*`,
@@ -103,6 +161,8 @@ of the default (persistent startup disk).
   - Linux: `efibootmgr -v` (enumerate/parse), `efibootmgr -n <id>` (one-time next boot via BootNext),
     `efibootmgr -o <ids>` (default boot, by moving the entry to the front of BootOrder),
     `systemctl reboot --firmware-setup` (reboot into firmware setup). Requires root.
+    systemd offers no supported way to set the firmware setup flag without restarting, which is why
+    that path goes through the countdown window.
   - macOS: `diskutil list` / `bless --getBoot` (enumerate), `bless --device /dev/<id> --setBoot`
     (persistent startup disk selection - no true one-time boot on macOS, so "next boot" and "default"
     map to the same operation). Requesting firmware setup is

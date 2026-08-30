@@ -109,7 +109,7 @@ public sealed class MacSystemInfoService : ISystemInfoService
 		}
 		catch (Exception ex)
 		{
-			Log.Verbose(ex, "csrutil is not available, SIP state cannot be determined");
+			Log.Information(ex, "csrutil is not available, SIP state cannot be determined");
 			return CommonSystemInfo.Unknown;
 		}
 	}
