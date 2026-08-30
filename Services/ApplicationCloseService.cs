@@ -50,6 +50,7 @@ public static class ApplicationCloseService
 	private const int SignalProbe = 0;
 
 	private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
+	private static readonly IReadOnlyList<string> OwnProcessNames = BuildOwnProcessNames();
 
 	/// <summary>
 	/// The POSIX <c>kill</c> function. Despite the name it only delivers a signal; whether that ends
@@ -241,6 +242,7 @@ public static class ApplicationCloseService
 			process.UserId == desktopUser
 			&& process.Id != Environment.ProcessId
 			&& !ancestors.Contains(process.Id)
+			&& !IsOwnApplicationProcess(process.Name)
 			&& !IsProtected(process.Name, protectedNames));
 
 		var asked = new List<UnixProcess>();
@@ -420,6 +422,40 @@ public static class ApplicationCloseService
 
 		return false;
 	}
+
+	/// <summary>Whether a process name belongs to this application and must never receive SIGTERM.</summary>
+	private static bool IsOwnApplicationProcess(string name) => IsProtected(name, OwnProcessNames);
+
+	/// <summary>Builds the self-protection names from the app identity and native host executable.</summary>
+	private static IReadOnlyList<string> BuildOwnProcessNames()
+	{
+		var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+		{
+			nameof(BootManager),
+		};
+
+		AddProcessName(names, AppDomain.CurrentDomain.FriendlyName);
+		AddProcessName(names, System.Reflection.Assembly.GetEntryAssembly()?.GetName().Name);
+		AddProcessName(names, Path.GetFileNameWithoutExtension(Environment.ProcessPath));
+
+		return names.ToList();
+	}
+
+	private static void AddProcessName(HashSet<string> names, string? name)
+	{
+		if (string.IsNullOrWhiteSpace(name) || IsGenericHostProcessName(name))
+		{
+			return;
+		}
+
+		names.Add(name);
+	}
+
+	private static bool IsGenericHostProcessName(string name) =>
+		string.Equals(name, "dotnet", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(name, "sh", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(name, "bash", StringComparison.OrdinalIgnoreCase)
+		|| string.Equals(name, "pwsh", StringComparison.OrdinalIgnoreCase);
 
 	/// <summary>Reads a process name without throwing for a process that has meanwhile exited.</summary>
 	private static string GetProcessName(Process process)
