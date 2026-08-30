@@ -157,7 +157,7 @@ public sealed partial class MacBootManagerService : IBootManagerService
 	/// </remarks>
 	public Task RequestBootToFirmwareSetupAsync(CancellationToken cancellationToken = default)
 	{
-		Log.Verbose("RequestBootToFirmwareSetupAsync invoked on macOS, which has no scriptable firmware setup entry point");
+		Log.Information("RequestBootToFirmwareSetupAsync invoked on macOS, which has no scriptable firmware setup entry point");
 		throw new NotSupportedException(
 			"macOS does not support scripting entry into firmware setup. Hold Option (Intel Macs) or the power button (Apple Silicon) during startup instead.");
 	}

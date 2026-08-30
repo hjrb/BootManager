@@ -47,7 +47,7 @@ public partial class MainViewModel : ViewModelBase
 		if (!IsElevated)
 		{
 			ElevationMessage = $"Not running as {ElevationService.RequiredPrivilegeName}. Enumerating and changing boot options will likely fail.";
-			Log.Verbose("Application is not running with elevated privileges ({Privilege})", ElevationService.RequiredPrivilegeName);
+			Log.Information("Application is not running with elevated privileges ({Privilege})", ElevationService.RequiredPrivilegeName);
 		}
 
 		// Fire and forget: the constructor cannot await, and failures are handled inside the command.

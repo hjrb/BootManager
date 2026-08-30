@@ -62,7 +62,7 @@ public partial class MainWindow : Window
 	/// enough to deserve its own button rather than only a tooltip.
 	/// </remarks>
 	private void OnBootEntryHelpClick(object? sender, RoutedEventArgs e) =>
-		AppInfo.OpenInDefaultApplication(AppInfo.BootEntryVisibilityHelpUrl);
+		AppInfo.OpenInDefaultApplication(AppInfo.GetBootEntryVisibilityHelpTarget());
 
 	/// <summary>
 	/// Arms the firmware setup request, behind a countdown on platforms that restart to do so.

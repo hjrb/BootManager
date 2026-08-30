@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using BootManager.Services;
+using Serilog;
 
 namespace BootManager.Views;
 
@@ -12,11 +13,12 @@ namespace BootManager.Views;
 /// </summary>
 /// <remarks>
 /// The delay is the only warning the user gets: the reboot commands used on Linux and macOS do not
-/// give applications a chance to prompt about unsaved work.
+/// give applications a chance to prompt about unsaved work. "Close apps" is the active counterpart -
+/// it lets the user hand that chance out himself, before anything restarts.
 /// </remarks>
 public partial class PowerCountdownWindow : Window
 {
-	private readonly TimeSpan _countdown = TimeSpan.FromSeconds(20);
+	private readonly TimeSpan _countdown = AppSettings.PowerCountdown;
 	private readonly DispatcherTimer _timer;
 	private readonly string _pendingVerb;
 	private readonly Func<Task> _action;
@@ -29,9 +31,7 @@ public partial class PowerCountdownWindow : Window
 			"Delayed Reboot",
 			"Rebooting",
 			SystemPowerService.GetCommandLine(PowerActionKind.ImmediateReboot),
-			() => SystemPowerService.ExecuteAsync(PowerActionKind.ImmediateReboot),
-			SystemPowerService.GetTooltip(PowerActionKind.GracefulReboot),
-			() => SystemPowerService.ExecuteAsync(PowerActionKind.GracefulReboot))
+			() => SystemPowerService.ExecuteAsync(PowerActionKind.ImmediateReboot))
 	{
 	}
 
@@ -42,18 +42,11 @@ public partial class PowerCountdownWindow : Window
 	/// <param name="pendingVerb">Verb the countdown line starts with; " in N seconds" is appended.</param>
 	/// <param name="commandLine">The command the action runs, shown below the countdown.</param>
 	/// <param name="action">Invoked when the countdown elapses or the user presses "Now".</param>
-	/// <param name="gracefulTooltip">Tooltip of the "Close apps" button; ignored when <paramref name="gracefulAction"/> is null.</param>
-	/// <param name="gracefulAction">
-	/// Optional alternative that asks running applications to close first. The button stays hidden when
-	/// this is null, which is the case for actions that have no graceful counterpart.
-	/// </param>
 	public PowerCountdownWindow(
 		string heading,
 		string pendingVerb,
 		string commandLine,
-		Func<Task> action,
-		string? gracefulTooltip = null,
-		Func<Task>? gracefulAction = null)
+		Func<Task> action)
 	{
 		InitializeComponent();
 
@@ -68,12 +61,12 @@ public partial class PowerCountdownWindow : Window
 		NowButton.Click += (_, _) => _ = RunAsync(_action);
 		ToolTip.SetTip(NowButton, $"Skips the rest of the countdown.\n\nRuns: {commandLine}");
 
-		GracefulButton.IsVisible = gracefulAction is not null;
-		if (gracefulAction is not null)
-		{
-			GracefulButton.Click += (_, _) => _ = RunAsync(gracefulAction);
-			ToolTip.SetTip(GracefulButton, gracefulTooltip);
-		}
+		CloseAppsButton.Click += (_, _) => _ = CloseApplicationsAsync();
+		ToolTip.SetTip(
+			CloseAppsButton,
+			"Asks every running application to close, so it can prompt you about unsaved work. "
+			+ "Stops the countdown, because those prompts wait for you."
+			+ $"\n\nRuns: {ApplicationCloseService.GetMechanism()}");
 
 		// DispatcherTimer ticks on the UI thread, so updating CountdownText.Text here is always safe.
 		_timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
@@ -93,6 +86,66 @@ public partial class PowerCountdownWindow : Window
 		}
 
 		CountdownText.Text = $"{_pendingVerb} in {Math.Ceiling(remaining.TotalSeconds)} seconds";
+	}
+
+	/// <summary>
+	/// Asks the running applications to close and reports what came of it.
+	/// </summary>
+	/// <remarks>
+	/// The countdown is stopped for good here. An application that asks about unsaved work is waiting for
+	/// the user, and letting the timer fire in the meantime would destroy exactly the work this button
+	/// exists to save. From here on the user decides, with "Now" or "Cancel".
+	/// </remarks>
+	private async Task CloseApplicationsAsync()
+	{
+		if (_finished)
+		{
+			return;
+		}
+
+		_timer.Stop();
+		CountdownText.Text = $"Countdown stopped - {_pendingVerb.ToLowerInvariant()} when you press Now";
+		CloseAppsButton.IsEnabled = false;
+		StatusText.IsVisible = true;
+		StatusText.Text = "Asking the applications to close...";
+
+		try
+		{
+			var result = await ApplicationCloseService.CloseAllAsync();
+			StatusText.Text = Describe(result);
+		}
+		catch (Exception ex)
+		{
+			Log.Error(ex, "Could not ask the running applications to close");
+			StatusText.Text = $"Could not close the applications: {ex.Message}";
+		}
+		finally
+		{
+			CloseAppsButton.IsEnabled = true;
+		}
+	}
+
+	/// <summary>Turns the outcome into one line the user can act on.</summary>
+	private static string Describe(CloseApplicationsResult result)
+	{
+		if (result.Asked == 0)
+		{
+			return "No open applications found.";
+		}
+
+		if (result.AllClosed)
+		{
+			return $"All {result.Asked} applications closed.";
+		}
+
+		// An application that is still there is usually showing a dialog, so it is named rather than counted.
+		const int maxNames = 6;
+		var names = string.Join(", ", result.StillRunning.Take(maxNames));
+		var rest = result.StillRunning.Count - maxNames;
+
+		return rest > 0
+			? $"Asked {result.Asked} applications to close. Still open: {names} and {rest} more."
+			: $"Asked {result.Asked} applications to close. Still open: {names}.";
 	}
 
 	private void Cancel()

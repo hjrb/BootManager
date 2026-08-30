@@ -184,7 +184,7 @@ internal static class WindowsFirmwareVariables
 		var read = GetFirmwareEnvironmentVariableW(name, EfiGlobalVariableGuid, buffer, (uint)buffer.Length);
 		if (read == 0)
 		{
-			Log.Verbose("Firmware variable {Name} could not be read (Win32 error {Error})", name, Marshal.GetLastWin32Error());
+			Log.Information("Firmware variable {Name} could not be read (Win32 error {Error})", name, Marshal.GetLastWin32Error());
 			return null;
 		}
 

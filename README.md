@@ -30,6 +30,9 @@ Download the build for your system from the
 [latest release](https://github.com/hjrb/BootManager/releases/latest) and unpack it anywhere. There is
 no installer. Windows builds are `.zip`, Linux and macOS builds are `.tar.gz`.
 
+Every build contains a `README.html` next to the program — this document, ready to open in any browser
+without an internet connection.
+
 Only the newest release is kept, so that page always shows the current version. Each release also
 carries a `SHA256SUMS.txt` — see [SECURITY.md](SECURITY.md) for how to check a download before running
 it with administrator rights.
@@ -96,8 +99,13 @@ The power menu distinguishes two ways to restart:
 - **Reboot now (graceful)** goes through the mechanism that lets applications ask you about unsaved
   work — which means an application can also refuse, and the machine stays up.
 - **Reboot now (forced)** restarts straight away and terminates applications without warning.
-- **Delayed reboot (20s)** shows a countdown, so you can cancel, reboot immediately, or switch to the
-  graceful variant with **Close apps**.
+- **Delayed reboot** shows a countdown (20 seconds by default), so you can cancel or reboot immediately.
+
+The countdown window also has a **Close apps** button. It asks every one of your running applications
+to close itself — the same thing that happens when you click a window's close button — so each one can
+prompt you about unsaved work. Nothing is ever killed: an application may refuse, and it is then listed
+as still open. Pressing the button stops the countdown, because those prompts are waiting for you; you
+then decide when to continue with **Now**, or drop the whole thing with **Cancel**.
 
 ### Graceful vs. forced reboot — and why it matters
 
@@ -266,8 +274,22 @@ complete response from the system — attach it when reporting a problem.
 
 ## Settings
 
-`appsettings.json` next to the program controls logging. You can override any setting without editing
-the file, either with an environment variable prefixed `BOOTMANAGER_` or on the command line:
+`appsettings.json` next to the program controls logging and a few behaviours of the window:
+
+| Setting | Meaning |
+| --- | --- |
+| `BootManager:PowerCountdownSeconds` | How long the countdown window waits before it restarts. |
+| `BootManager:CloseApplicationsGracePeriodSeconds` | How long **Close apps** waits for an application to disappear before listing it as still open. |
+| `BootManager:ProtectedProcessNamesWindows` | Windows processes **Close apps** must never touch, because they are the shell rather than an application. |
+| `BootManager:ProtectedProcessNamesUnix` | The same for Linux and macOS: the session's init system, display server, desktop shell, sound and bus daemons. |
+
+The two process lists cannot be complete — every desktop environment names its parts differently — so
+add any name you find missing. Use the name as the system reports it, without a path or `.exe`; on
+Linux only the first 15 characters are compared, which is all the kernel keeps. If a list is empty or
+missing, **Close apps** refuses to run rather than risk ending your session.
+
+You can override any setting without editing the file, either with an environment variable prefixed
+`BOOTMANAGER_` or on the command line:
 
 ```
 BootManager --Serilog:MinimumLevel=Debug

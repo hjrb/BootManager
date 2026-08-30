@@ -64,7 +64,7 @@ public static class SystemPowerService
 	{
 		PowerActionKind.GracefulReboot => "Reboot now (graceful)",
 		PowerActionKind.ImmediateReboot => "Reboot now (forced)",
-		PowerActionKind.DelayedReboot => "Delayed reboot (20s)",
+		PowerActionKind.DelayedReboot => $"Delayed reboot ({AppSettings.PowerCountdown.TotalSeconds:0}s)",
 		PowerActionKind.Shutdown => "Shutdown",
 		PowerActionKind.FullShutdown => "Full shutdown",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
@@ -80,7 +80,7 @@ public static class SystemPowerService
 		PowerActionKind.ImmediateReboot =>
 			"Reboots straight away and terminates applications without warning. Unsaved work is lost.",
 		PowerActionKind.DelayedReboot =>
-			"Shows a 20 second countdown so you can save your work, then reboots.",
+			$"Shows a {AppSettings.PowerCountdown.TotalSeconds:0} second countdown so you can save your work, then reboots.",
 		PowerActionKind.Shutdown => "Powers the machine off.",
 		PowerActionKind.FullShutdown => "Powers the machine off without the hybrid boot cache, for a true cold start.",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),

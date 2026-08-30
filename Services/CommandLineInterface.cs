@@ -66,7 +66,7 @@ public static class CommandLineInterface
 			Console.Error.WriteLine(
 				$"Error: this command requires {ElevationService.RequiredPrivilegeName} privileges. "
 				+ "Re-run it from an elevated console.");
-			Log.Error("Command {Command} refused: missing {Privilege} privileges", command, ElevationService.RequiredPrivilegeName);
+			Log.Warning("Command {Command} refused: missing {Privilege} privileges", command, ElevationService.RequiredPrivilegeName);
 			return ExitFailure;
 		}
 

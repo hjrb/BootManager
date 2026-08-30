@@ -69,9 +69,20 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     chance to prompt, every action that restarts the machine without the user explicitly asking for an
     immediate restart must be put behind the countdown window:
     - The countdown window must support being reused for any deferred action, not only the plain reboot.
-    - It must offer **Cancel**, an immediate variant, and - where the action has a graceful counterpart -
-      a button that lets running applications close first and then reboots gracefully.
+    - It must offer **Cancel**, an immediate variant, and a **Close apps** button that asks the running
+      applications of the user's desktop session to close themselves. This must be an action of the
+      application, performed the same way on every platform - not a delegation to an operating system
+      reboot command that happens to ask applications on its way down.
+    - **Close apps** must only *ask*: an application that refuses must be reported by name and must not
+      be killed. Processes that carry the desktop session itself must be excluded, since closing them
+      would end the session instead of an application.
+    - Pressing **Close apps** must stop the countdown, so that an application's "unsaved changes" prompt
+      cannot be cut short by the restart the countdown would otherwise trigger.
     - It must display the command that will run when the countdown ends.
+    - The countdown length, the grace period of **Close apps** and both lists of protected processes
+      must be settings in `appsettings.json`, not compiled-in constants: the protected names differ per
+      desktop environment and a user must be able to add a missing one without rebuilding. Setting
+      names must say what they mean including their unit.
 14. Requesting the firmware setup screen must support platforms where the request itself reboots:
     - The service layer must expose whether the request restarts the machine immediately.
     - Where it does (Linux, `systemctl reboot --firmware-setup`), the UI must show the countdown first
@@ -129,6 +140,10 @@ of the default (persistent startup disk).
   - A portable framework-dependent build without a runtime identifier that runs on all supported
     operating systems.
 - A brief `README.md` must explain to end users how to use the tool.
+- Every published build must carry that documentation as a single self-contained `README.html`, since a
+  Markdown file next to an executable is unreadable for a user without a viewer for it. It must be
+  generated from `README.md` during publishing rather than maintained separately, so the two cannot
+  drift apart, and it must need no internet connection and no additional files to display.
 
 ## Implementation Notes
 - Avalonia MVVM app (`BootManager.csproj`), NuGet packages: `Microsoft.Extensions.Configuration*`,

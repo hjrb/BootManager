@@ -13,6 +13,8 @@
 		<TextBlock x:Name="CountdownText" Text="Rebooting in 20 seconds" FontSize="18" HorizontalAlignment="Center" />
 		<TextBlock x:Name="CommandText" FontSize="11" Opacity="0.7" TextWrapping="Wrap" MaxWidth="380" HorizontalAlignment="Center"
 				   ToolTip.Tip="The command that runs when the countdown ends." />
+		<TextBlock x:Name="StatusText" FontSize="12" TextWrapping="Wrap" MaxWidth="380" HorizontalAlignment="Center" IsVisible="False"
+				   ToolTip.Tip="The result of the last attempt to close the running applications." />
 		<StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
 			<Button x:Name="CancelButton" Width="120" HorizontalContentAlignment="Center"
 					ToolTip.Tip="Stops the countdown and closes this window. Nothing happens to the machine.">
@@ -21,9 +23,9 @@
 					<TextBlock Text="Cancel" VerticalAlignment="Center" />
 				</StackPanel>
 			</Button>
-			<Button x:Name="GracefulButton" Width="140" HorizontalContentAlignment="Center">
+			<Button x:Name="CloseAppsButton" Width="140" HorizontalContentAlignment="Center">
 				<StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
-					<TextBlock Text="&#x21ba;" FontSize="14" VerticalAlignment="Center" />
+					<TextBlock Text="&#x2716;" FontSize="14" VerticalAlignment="Center" />
 					<TextBlock Text="Close apps" VerticalAlignment="Center" />
 				</StackPanel>
 			</Button>

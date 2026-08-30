@@ -18,13 +18,27 @@
 		"bootmgr",
 		"bootsequence",
 		"csrutil",
+		"dbus",
 		"displayorder",
 		"efibootmgr",
 		"fwbootmgr",
 		"geteuid",
+		"getuid",
 		"hiberboot",
+		"ksmserver",
+		"kwin",
+		"loginwindow",
+		"openbox",
 		"osascript",
+		"pipewire",
+		"plasmashell",
+		"ppid",
+		"pulseaudio",
 		"setdef",
-		"setnext"
+		"setnext",
+		"ucomm",
+		"wireplumber",
+		"Xorg",
+		"Xwayland"
 	]
 }
