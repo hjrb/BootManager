@@ -20,8 +20,10 @@
 			<StackPanel Spacing="4" VerticalAlignment="Center">
 				<TextBlock Text="BootManager" FontSize="22" FontWeight="Bold" />
 				<!-- Filled in from the assembly metadata; see AboutWindow.axaml.cs. -->
-				<SelectableTextBlock x:Name="VersionText" FontSize="13" />
-				<SelectableTextBlock x:Name="CopyrightText" FontSize="12" Opacity="0.75" />
+				<SelectableTextBlock x:Name="VersionText" FontSize="13"
+									 ToolTip.Tip="Assembly version and build. Select the text to copy it into a bug report." />
+				<SelectableTextBlock x:Name="CopyrightText" FontSize="12" Opacity="0.75"
+									 ToolTip.Tip="Copyright notice from the assembly metadata." />
 			</StackPanel>
 		</StackPanel>
 
@@ -34,11 +36,11 @@
 				   Text="BootManager is open source software under the Apache License 2.0. It redistributes third-party open source components; the notices document lists every one of them together with its licence terms." />
 
 		<WrapPanel>
-			<Button Content="Project on GitHub" Click="OnOpenRepository" />
-			<Button Content="License (Apache-2.0)" Click="OnOpenLicense" />
-			<Button Content="Third-party notices" Click="OnOpenThirdPartyNotices" />
+			<Button Content="Project on GitHub" Click="OnOpenRepository" ToolTip.Tip="Opens the source repository in your browser." />
+			<Button Content="License (Apache-2.0)" Click="OnOpenLicense" ToolTip.Tip="Opens the full Apache License 2.0 text." />
+			<Button Content="Third-party notices" Click="OnOpenThirdPartyNotices" ToolTip.Tip="Opens the list of redistributed components and their licences." />
 		</WrapPanel>
 
-		<Button Content="Close" HorizontalAlignment="Right" IsCancel="True" Click="OnClose" />
+		<Button Content="Close" HorizontalAlignment="Right" IsCancel="True" Click="OnClose" ToolTip.Tip="Closes this dialog." />
 	</StackPanel>
 </Window>

@@ -52,6 +52,48 @@ public static class ProcessRunner
 			CreateNoWindow = true,
 		};
 
+		return await RunAsync(startInfo, cancellationToken).ConfigureAwait(false);
+	}
+
+	/// <summary>
+	/// Starts a process with each argument passed separately, and returns its exit code and output.
+	/// </summary>
+	/// <remarks>
+	/// Use this instead of the single-string overload whenever an argument contains spaces or quotes.
+	/// .NET escapes each element itself, so nothing has to be quoted by hand and no shell ever sees the
+	/// values. The AppleScript passed to <c>osascript</c> is the reason this overload exists.
+	/// </remarks>
+	/// <param name="fileName">Executable to start.</param>
+	/// <param name="arguments">One element per argument, passed verbatim to the program.</param>
+	/// <param name="cancellationToken">Aborts the wait if the tool hangs.</param>
+	/// <returns>The exit code together with the captured standard output and standard error.</returns>
+	public static async Task<ProcessResult> RunAsync(
+		string fileName,
+		IEnumerable<string> arguments,
+		CancellationToken cancellationToken = default)
+	{
+		var startInfo = new ProcessStartInfo(fileName)
+		{
+			RedirectStandardOutput = true,
+			RedirectStandardError = true,
+			UseShellExecute = false,
+			CreateNoWindow = true,
+		};
+
+		foreach (var argument in arguments)
+		{
+			startInfo.ArgumentList.Add(argument);
+		}
+
+		Log.Verbose("Starting process {FileName} {Arguments}", fileName, string.Join(' ', startInfo.ArgumentList));
+
+		return await RunAsync(startInfo, cancellationToken).ConfigureAwait(false);
+	}
+
+	private static async Task<ProcessResult> RunAsync(ProcessStartInfo startInfo, CancellationToken cancellationToken)
+	{
+		var fileName = startInfo.FileName;
+
 		using var process = new Process { StartInfo = startInfo };
 		var stdOut = new StringBuilder();
 		var stdErr = new StringBuilder();

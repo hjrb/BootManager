@@ -149,6 +149,22 @@ public sealed partial class LinuxBootManagerService : IBootManagerService
 	}
 
 	/// <inheritdoc />
+	/// <remarks><c>systemctl reboot --firmware-setup</c> arms the request and restarts in one step.</remarks>
+	public bool FirmwareSetupRestartsImmediately => true;
+
+	/// <inheritdoc />
+	public string EnumerateCommand => "efibootmgr -v";
+
+	/// <inheritdoc />
+	public string SetNextBootCommand => "efibootmgr -n <id>";
+
+	/// <inheritdoc />
+	public string SetDefaultBootCommand => "efibootmgr -o <id>,<remaining ids>";
+
+	/// <inheritdoc />
+	public string FirmwareSetupCommand => "systemctl reboot --firmware-setup";
+
+	/// <inheritdoc />
 	/// <remarks>
 	/// Delegated to systemd, which sets the UEFI <c>OsIndications</c> variable itself and then reboots.
 	/// This is the reason the call reboots immediately here while the Windows implementation only arms

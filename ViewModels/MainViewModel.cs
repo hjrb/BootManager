@@ -94,6 +94,31 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>Power actions supported by this OS, shown in the popup menu.</summary>
 	public IReadOnlyList<PowerActionKind> PowerActions => SystemPowerService.GetSupportedActions();
 
+	/// <summary>Tooltip for the refresh button on the boot options tab.</summary>
+	public string RefreshTooltip =>
+		$"Re-reads the boot entries from the firmware.\n\nRuns: {_bootManagerService.EnumerateCommand}";
+
+	/// <summary>Tooltip for the "Set as Next Boot" button.</summary>
+	public string NextBootTooltip =>
+		"One-time override: applies to the next boot only, then reverts to the default.\n\n"
+		+ $"Runs: {_bootManagerService.SetNextBootCommand}";
+
+	/// <summary>Tooltip for the "Set as Default" button.</summary>
+	public string DefaultBootTooltip =>
+		"Persistent: applies to every boot until changed again.\n\n"
+		+ $"Runs: {_bootManagerService.SetDefaultBootCommand}";
+
+	/// <summary>Tooltip for the "Open UEFI Setup at Next Boot" button.</summary>
+	public string FirmwareSetupTooltip =>
+		(FirmwareSetupRestartsImmediately
+			? "Restarts the machine into the firmware setup screen, after a countdown. "
+			: "Asks the firmware to open its setup screen on the next boot. Does not restart the machine. ")
+		+ $"\n\nRuns: {_bootManagerService.FirmwareSetupCommand}";
+
+	/// <summary>Tooltip for the power button, which opens the reboot and shutdown menu.</summary>
+	public string PowerTooltip =>
+		"Reboot and shutdown actions supported by this operating system. Each entry shows the command it runs.";
+
 	/// <summary>Whether an operation is in progress; drives the progress bar.</summary>
 	[ObservableProperty]
 	public partial bool IsBusy { get; set; }
@@ -163,17 +188,33 @@ public partial class MainViewModel : ViewModelBase
 	}
 
 	/// <summary>
-	/// Asks the firmware to show its setup screen on the next boot. Does not restart the machine.
+	/// Asks the firmware to show its setup screen on the next boot.
 	/// </summary>
+	/// <remarks>
+	/// On Linux this also restarts the machine, which is why the view puts a countdown in front of it;
+	/// see <see cref="FirmwareSetupRestartsImmediately"/>.
+	/// </remarks>
 	[RelayCommand]
 	private async Task ConfigureFirmwareSetupAsync()
 	{
 		await RunGuardedAsync(async () =>
 		{
 			await _bootManagerService.RequestBootToFirmwareSetupAsync();
-			ShowNotification("System configured to open UEFI firmware setup on next boot.", isError: false);
+			ShowNotification(
+				FirmwareSetupRestartsImmediately
+					? "Restarting into UEFI firmware setup."
+					: "System configured to open UEFI firmware setup on next boot.",
+				isError: false);
 		});
 	}
+
+	/// <summary>
+	/// Whether <see cref="ConfigureFirmwareSetupCommand"/> restarts the machine as a side effect.
+	/// </summary>
+	public bool FirmwareSetupRestartsImmediately => _bootManagerService.FirmwareSetupRestartsImmediately;
+
+	/// <summary>The command the firmware setup request runs, shown in tooltips and in the countdown window.</summary>
+	public string FirmwareSetupCommand => _bootManagerService.FirmwareSetupCommand;
 
 	/// <summary>Executes a shutdown or reboot action chosen from the power popup menu.</summary>
 	public async Task ExecutePowerActionAsync(PowerActionKind action)

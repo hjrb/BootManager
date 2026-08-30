@@ -242,6 +242,23 @@ public sealed partial class WindowsBootManagerService : IBootManagerService
 	}
 
 	/// <inheritdoc />
+	/// <remarks>Windows only arms the request, so the user picks when to restart.</remarks>
+	public bool FirmwareSetupRestartsImmediately => false;
+
+	/// <inheritdoc />
+	public string EnumerateCommand => "bcdedit.exe /enum firmware";
+
+	/// <inheritdoc />
+	public string SetNextBootCommand => "bcdedit.exe /set {fwbootmgr} bootsequence <id>";
+
+	/// <inheritdoc />
+	public string SetDefaultBootCommand => "bcdedit.exe /set {fwbootmgr} displayorder <id> /addfirst";
+
+	/// <inheritdoc />
+	public string FirmwareSetupCommand =>
+		"SetFirmwareEnvironmentVariableW: sets bit 0 (BOOT_TO_FW_UI) in the UEFI variable OsIndications";
+
+	/// <inheritdoc />
 	/// <remarks>
 	/// Sets the UEFI <c>OsIndications</c> variable rather than calling <c>shutdown.exe /r /fw</c>.
 	/// <para>

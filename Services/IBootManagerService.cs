@@ -30,6 +30,22 @@ namespace BootManager.Services;
 /// </remarks>
 public interface IBootManagerService
 {
+	/// <summary>The command line or API call used to list the boot entries.</summary>
+	/// <remarks>
+	/// These four descriptions exist purely for the tooltips. Showing the real command turns every
+	/// button into something the user can verify and reproduce in a terminal instead of having to trust
+	/// a label, and it makes bug reports far more precise.
+	/// </remarks>
+	string EnumerateCommand { get; }
+
+	/// <summary>The command line or API call used to set the one-time next boot entry.</summary>
+	string SetNextBootCommand { get; }
+
+	/// <summary>The command line or API call used to set the persistent default boot entry.</summary>
+	string SetDefaultBootCommand { get; }
+
+	/// <summary>The command line or API call used to request the firmware setup screen.</summary>
+	string FirmwareSetupCommand { get; }
 	/// <summary>
 	/// Reads the list of boot entries the firmware currently offers.
 	/// </summary>
@@ -69,12 +85,23 @@ public interface IBootManagerService
 	Task SetDefaultBootEntryAsync(BootEntry entry, CancellationToken cancellationToken = default);
 
 	/// <summary>
+	/// Whether <see cref="RequestBootToFirmwareSetupAsync"/> restarts the machine as part of the request.
+	/// </summary>
+	/// <remarks>
+	/// Platforms differ here: Windows can arm the request and leave the machine running, while systemd
+	/// only offers <c>systemctl reboot --firmware-setup</c>, which arms and restarts in one step. Callers
+	/// use this to warn the user - or offer a countdown - before invoking the request.
+	/// </remarks>
+	bool FirmwareSetupRestartsImmediately { get; }
+
+	/// <summary>
 	/// Configures the machine to open the firmware (UEFI/BIOS) setup screen on the next boot,
 	/// so the user does not have to catch the vendor-specific hotkey during startup.
 	/// </summary>
 	/// <remarks>
-	/// This only arms the request; it does not reboot the machine. Not every firmware supports it,
-	/// and macOS has no scriptable equivalent at all.
+	/// Whether this also restarts the machine depends on the platform; see
+	/// <see cref="FirmwareSetupRestartsImmediately"/>. Not every firmware supports the request, and
+	/// macOS has no scriptable equivalent at all.
 	/// </remarks>
 	/// <param name="cancellationToken">Allows the caller to abort the operation.</param>
 	/// <exception cref="NotSupportedException">

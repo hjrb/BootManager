@@ -24,6 +24,16 @@ public static class AppInfo
 	/// <summary>The open source compliance document, used when no local copy was deployed.</summary>
 	public const string ThirdPartyNoticesUrl = "https://github.com/hjrb/BootManager/blob/main/THIRD-PARTY-NOTICES.md";
 
+	/// <summary>
+	/// The README section explaining why removable media do not always appear in the boot entry list.
+	/// </summary>
+	/// <remarks>
+	/// Deliberately the online copy rather than a deployed file: the anchor lands the reader directly on
+	/// the relevant section, which a local Markdown file opened in a text editor could not do.
+	/// </remarks>
+	public const string BootEntryVisibilityHelpUrl =
+		"https://github.com/hjrb/BootManager/blob/main/README.md#why-dont-i-see-my-usb-stick-or-dvd";
+
 	/// <summary>File name of the licence as it is deployed next to the executable.</summary>
 	public const string LicenseFileName = "LICENSE";
 
