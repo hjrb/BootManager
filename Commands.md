@@ -10,6 +10,39 @@
 | **Reboot, graceful**                | `shutdown /r /t 0` (no `/f`)                            | `systemctl reboot --check-inhibitors=yes` | `osascript -e 'tell application "System Events" to restart'` | same as macOS Intel                   |
 | **Reboot, forced / hard**           | `shutdown /r /t 0 /f`                                   | `systemctl reboot --force --no-wall` | `shutdown -r now`                     | same as macOS Intel                                |
 | **Shut down**                       | `shutdown /s /t 0 /f`                                   | `systemctl poweroff`                | `shutdown -h now`                      | same as macOS Intel                                |
+| **Sleep (suspend to RAM)**          | `SetSuspendState(FALSE, …)` in `powrprof.dll`           | `systemctl suspend`                 | `pmset sleepnow`                       | same as macOS Intel                                |
+| **Hibernate (suspend to disk)**     | `shutdown /h`                                           | `systemctl hibernate`               | no request; `pmset -a hibernatemode`   | same as macOS Intel                                |
+| **Hybrid sleep**                    | power plan option "Allow hybrid sleep"                  | `systemctl hybrid-sleep`            | `pmset -a hibernatemode 3`             | same as macOS Intel                                |
+| **Sleep, then hibernate**           | power plan option "Hibernate after"                     | `systemctl suspend-then-hibernate`  | `pmset -a standby 1 standbydelay <s>`  | same as macOS Intel                                |
+
+# Sleep modes, and which of them write a hibernation file
+There are four distinct things people call "sleep", and the difference is what happens to your RAM:
+
+- **Sleep / suspend to RAM** (ACPI S3, or "modern standby" on newer Windows machines). Memory keeps
+  its contents and stays powered, everything else switches off. Resumes in seconds, and the session is
+  gone if the machine loses power. Nothing is written to disk by the request itself.
+- **Hibernate / suspend to disk** (ACPI S4). The whole memory content is written to a hibernation image
+  (`hiberfil.sys` on Windows, the swap area on Linux, `/private/var/vm/sleepimage` on macOS) and the
+  machine powers off completely. Survives a power cut, resumes more slowly. For dual boot this is the
+  dangerous one: the file systems are left in a state another operating system must not write to.
+- **Hybrid sleep.** Both at once: the image is written *and* memory stays powered, so a normal resume
+  is fast and a power cut still does not lose the session.
+- **Sleep, then hibernate.** Sleeps first, and hibernates by itself after a configured delay, so a
+  laptop does not flatten its battery while asleep.
+
+The trap is that "sleep" on Windows may quietly do one of the others:
+
+- The **"Allow hybrid sleep"** power plan option is on by default on desktop machines, and it makes a
+  plain sleep write `hiberfil.sys` as well. No sleep *request* can override it - it has to be turned
+  off in the power settings (`powercfg`).
+- The usual one-liner **`rundll32.exe powrprof.dll,SetSuspendState 0,1,0` ignores its arguments** and
+  hibernates whenever hibernation is enabled. Only the native `SetSuspendState` call actually sleeps,
+  which is why this program does not use `rundll32` for it.
+- On macOS the equivalent setting is `hibernatemode`: `0` is pure sleep, `3` (the laptop default) is
+  hybrid, and `25` is true hibernation.
+
+On Linux the four modes map one to one onto `systemctl`, and what the kernel can actually do is listed
+in `/sys/power/state` - `mem` means suspend to RAM is available, `disk` means hibernation is.
 
 # Graceful vs. forced reboot
 The two reboot rows above are not just different spellings of the same thing, and the difference is

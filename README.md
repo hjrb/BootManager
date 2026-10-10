@@ -214,8 +214,19 @@ BootManager reboot           Reboot, letting applications close first (they may 
 BootManager reboot-graceful  Alias for reboot
 BootManager hardreboot       Reboot immediately, terminating applications without warning
 BootManager shutdown         Shut down the machine immediately
+BootManager sleep            Suspend to RAM; the session is lost if power is cut
+BootManager hibernate        Write the session to the hibernation file and power off
+BootManager hybridsleep      Sleep and write the hibernation image, so the session survives a power cut
+BootManager sleep-then-hibernate
+                             Sleep now, hibernate after the delay configured in the system
 BootManager help             Show the available commands
 ```
+
+The sleep commands only offer what the current system really supports: `hybridsleep` and
+`sleep-then-hibernate` are Linux-only, because Windows and macOS expose them as power settings that
+change what a plain sleep does rather than as something you can request, and `hibernate` does not
+exist on macOS at all. On Linux the hibernation based modes are hidden when the kernel does not list
+`disk` in `/sys/power/state`.
 
 `disableFastStartup` clears the `HiberbootEnabled` power setting, so shutting Windows down really
 powers the machine off instead of hibernating the kernel. Hibernation itself stays available. The

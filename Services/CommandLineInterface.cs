@@ -31,7 +31,8 @@ public static class CommandLineInterface
 
 	/// <summary>The commands recognised as the first argument, compared case-insensitively.</summary>
 	private static readonly string[] KnownCommands =
-		["list", "setnext", "setdef", "bootuefi", "info", "disablefaststartup", "reboot", "reboot-graceful", "hardreboot", "shutdown", "help", "--help", "-h"];
+		["list", "setnext", "setdef", "bootuefi", "info", "disablefaststartup", "reboot", "reboot-graceful", "hardreboot",
+		 "shutdown", "sleep", "hibernate", "hybridsleep", "sleep-then-hibernate", "help", "--help", "-h"];
 
 	/// <summary>
 	/// Decides whether the given command line asks for console mode rather than the window.
@@ -87,6 +88,15 @@ public static class CommandLineInterface
 					PowerActionKind.ImmediateReboot,
 					"Rebooting now, without asking applications."),
 				"shutdown" => await ExecutePowerActionAsync(PowerActionKind.Shutdown, "Shutting down now."),
+
+				// The sleep commands only return once the machine has woken up again, so their message
+				// is printed after the resume rather than before the machine goes down.
+				"sleep" => await ExecutePowerActionAsync(PowerActionKind.Sleep, "Resumed from sleep."),
+				"hibernate" => await ExecutePowerActionAsync(PowerActionKind.Hibernate, "Hibernating now."),
+				"hybridsleep" => await ExecutePowerActionAsync(PowerActionKind.HybridSleep, "Resumed from hybrid sleep."),
+				"sleep-then-hibernate" => await ExecutePowerActionAsync(
+					PowerActionKind.SuspendThenHibernate,
+					"Resumed; the machine was asleep and would have hibernated after the configured delay."),
 				_ => Unreachable(),
 			};
 		}
@@ -198,7 +208,8 @@ public static class CommandLineInterface
 		return ExitSuccess;
 	}
 
-	/// <summary>Triggers a reboot or shutdown, without the GUI's delayed countdown.</summary>
+	/// <summary>Triggers a reboot, sleep or shutdown, without the GUI's delayed countdown.</summary>
+	/// <exception cref="NotSupportedException">The current OS does not offer this action.</exception>
 	private static async Task<int> ExecutePowerActionAsync(PowerActionKind action, string confirmationMessage)
 	{
 		await SystemPowerService.ExecuteAsync(action);
@@ -268,6 +279,15 @@ public static class CommandLineInterface
 		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.ImmediateReboot)}
 		  shutdown         Shut down the machine immediately.
 		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.Shutdown)}
+		  sleep            Suspend to RAM. The session stays in memory and is lost on power failure.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.Sleep)}
+		  hibernate        Write the session to the hibernation file and power off.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.Hibernate)}
+		  hybridsleep      Sleep and write the hibernation image, so the session survives a power cut.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.HybridSleep)}
+		  sleep-then-hibernate
+		                   Sleep now and hibernate after the delay configured in the system.
+		                   Runs: {SystemPowerService.GetCommandLine(PowerActionKind.SuspendThenHibernate)}
 		  help             Show this text.
 
 		Start without a command to open the graphical interface.

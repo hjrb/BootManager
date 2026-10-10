@@ -38,6 +38,10 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     | `reboot` / `reboot-graceful` | Reboot gracefully; applications may prompt or cancel it. |
     | `hardreboot` | Reboot immediately, terminating applications without warning. |
     | `shutdown` | Shut the machine down immediately. |
+    | `sleep` | Suspend to RAM. |
+    | `hibernate` | Suspend to disk, writing the hibernation file. |
+    | `hybridsleep` | Sleep and write the hibernation image at the same time. |
+    | `sleep-then-hibernate` | Sleep now and hibernate after the delay configured in the system. |
 
     When a CLI command is invoked without Administrator/root privileges the application must simply
     fail with an error message and a non-zero exit code - it must **not** try to re-launch itself
@@ -51,6 +55,17 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     - Delayed reboot (20 seconds, with an on-screen countdown and a cancel button).
     - Shutdown.
     - Full shutdown on Windows only; hidden on Linux and macOS where the OS does not expose a separate action.
+    - The sleep modes the platform really supports, which are not the same everywhere:
+      - **Sleep** (suspend to RAM) on all three platforms.
+      - **Hibernate** (suspend to disk) on Windows and Linux; macOS has no hibernate request, only a
+        `hibernatemode` setting that decides what a sleep turns into.
+      - **Hybrid sleep** and **sleep, then hibernate** on Linux only, because Windows and macOS expose
+        both as power plan settings that modify a plain sleep rather than as requestable actions.
+      - On Linux, the hibernation based modes must be hidden when the kernel does not list `disk` in
+        `/sys/power/state`, since they could not work on that machine.
+    - Sleep on Windows must not be implemented with `rundll32.exe powrprof.dll,SetSuspendState`: that
+      entry point ignores its arguments and hibernates whenever hibernation is enabled. The native
+      `SetSuspendState` call must be used so that "sleep" really means sleep.
     - Unsupported actions for a given OS must be hidden instead of shown as disabled items.
     - On Linux and macOS, the implementation should still expose the closest equivalent operations that are actually supported by the platform, such as `systemctl reboot`/`poweroff` and `shutdown -r now`/`shutdown -h now`.
 12. The application must support two distinct kinds of restart, because the difference decides whether
