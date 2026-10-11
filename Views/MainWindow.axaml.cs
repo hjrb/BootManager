@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using BootManager.Models;
 using BootManager.Services;
 using BootManager.ViewModels;
@@ -101,6 +103,41 @@ public partial class MainWindow : Window
 		}
 	}
 
+	/// <summary>Arms an available device on double-click, using the same privilege checks as the toolbar.</summary>
+	private async void OnAvailableWakeDeviceDoubleTapped(object? sender, TappedEventArgs e) =>
+		await ExecuteWakeDeviceDoubleTapAsync(e, true);
+
+	/// <summary>Disarms an armed device on double-click, using the same privilege checks as the toolbar.</summary>
+	private async void OnArmedWakeDeviceDoubleTapped(object? sender, TappedEventArgs e) =>
+		await ExecuteWakeDeviceDoubleTapAsync(e, false);
+
+	private async Task ExecuteWakeDeviceDoubleTapAsync(TappedEventArgs e, bool armed)
+	{
+		if (DataContext is not MainViewModel viewModel || e.Source is not Control source)
+		{
+			return;
+		}
+		var item = source as TreeViewItem ?? source.FindAncestorOfType<TreeViewItem>();
+		if (item?.DataContext is not WakeDeviceItem device)
+		{
+			return;
+		}
+		if (armed)
+		{
+			viewModel.SelectedAvailableWakeDevice = device;
+		}
+		else
+		{
+			viewModel.SelectedArmedWakeDevice = device;
+		}
+		var command = armed ? viewModel.ArmWakeDeviceCommand : viewModel.DisarmWakeDeviceCommand;
+		if (command.CanExecute(null))
+		{
+			e.Handled = true;
+			await command.ExecuteAsync(null);
+		}
+	}
+
 	/// <summary>Runs the power action of the clicked toolbar button.</summary>
 	private async void OnPowerActionClick(object? sender, RoutedEventArgs e)
 	{
@@ -116,6 +153,80 @@ public partial class MainWindow : Window
 			return;
 		}
 
+		if (viewModel.IsBusy)
+		{
+			return;
+		}
+
+		if (action.HasHibernateMenu && !SystemPowerService.IsWindowsHibernateAvailable() && viewModel.IsElevated)
+		{
+			if (await ConfirmHibernateConfigurationAsync(true))
+			{
+				await viewModel.ConfigureWindowsHibernateAsync(true);
+			}
+			return;
+		}
+
 		await viewModel.ExecutePowerActionAsync(action.Kind);
+	}
+
+	/// <summary>Requests disabling Windows hibernation through the Hibernate dropdown.</summary>
+	private async void OnDisableHibernateClick(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is not MainViewModel viewModel || viewModel.IsBusy)
+		{
+			return;
+		}
+
+		if (!viewModel.IsElevated)
+		{
+			await viewModel.ConfigureWindowsHibernateAsync(false);
+			return;
+		}
+
+		if (await ConfirmHibernateConfigurationAsync(false))
+		{
+			await viewModel.ConfigureWindowsHibernateAsync(false);
+		}
+	}
+
+	/// <summary>Confirms a hibernation configuration change without immediately hibernating the machine.</summary>
+	private Task<bool> ConfirmHibernateConfigurationAsync(bool enabled)
+	{
+		var dialog = new Window
+		{
+			Title = enabled ? "Enable Hibernate?" : "Disable Hibernate?",
+			Width = 420,
+			SizeToContent = SizeToContent.Height,
+			CanResize = false,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+		};
+		var confirm = new Button { Content = enabled ? "Enable Hibernate" : "Disable Hibernate" };
+		var cancel = new Button { Content = "Cancel", IsCancel = true };
+		confirm.Click += (_, _) => dialog.Close(true);
+		cancel.Click += (_, _) => dialog.Close(false);
+		dialog.Content = new StackPanel
+		{
+			Margin = new Avalonia.Thickness(20),
+			Spacing = 16,
+			Children =
+			{
+				new TextBlock
+				{
+					Text = enabled
+						? "Hibernate is disabled or unavailable. Enable it now? This creates a hibernation file on the system drive."
+						: "Disable hibernation? This removes the hibernation file and also disables Fast Startup and hybrid sleep.",
+					TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+				},
+				new StackPanel
+				{
+					Orientation = Avalonia.Layout.Orientation.Horizontal,
+					HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+					Spacing = 8,
+					Children = { cancel, confirm },
+				},
+			},
+		};
+		return dialog.ShowDialog<bool>(this);
 	}
 }

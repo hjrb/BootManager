@@ -20,6 +20,12 @@
 	</Design.DataContext>
 
 	<Window.Styles>
+		<Style Selector="TextBlock.wakeFromAny">
+			<Setter Property="Foreground" Value="LightGreen" />
+		</Style>
+		<Style Selector="TreeView.wakeDevices TreeViewItem">
+			<Setter Property="IsExpanded" Value="True" />
+		</Style>
 		<Style Selector="Border.current">
 			<Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
 			<Setter Property="BorderThickness" Value="2" />
@@ -61,6 +67,10 @@
 			<Setter Property="BorderThickness" Value="0" />
 			<Setter Property="Padding" Value="10,5" />
 			<Setter Property="Margin" Value="0,0,2,2" />
+		</Style>
+
+		<Style Selector="Border.toolbar Button.unavailable">
+			<Setter Property="Foreground" Value="LightGray" />
 		</Style>
 
 		<!-- Zebra striping uses a translucent grey so it works in either system theme. -->
@@ -130,7 +140,18 @@
 									</ItemsControl.ItemsPanel>
 									<ItemsControl.ItemTemplate>
 										<DataTemplate x:DataType="models:PowerActionItem">
-											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+											<StackPanel Orientation="Horizontal">
+												<Button Content="{Binding Label}" Classes.unavailable="{Binding IsUnavailable}"
+														ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+												<Button Content="&#x25BE;" Width="26" Padding="4,5" IsVisible="{Binding HasHibernateMenu}"
+														ToolTip.Tip="Hibernation settings" AutomationProperties.Name="Hibernation settings">
+													<Button.Flyout>
+														<MenuFlyout>
+															<MenuItem Header="Disable Hibernate" Click="OnDisableHibernateClick" />
+														</MenuFlyout>
+													</Button.Flyout>
+												</Button>
+											</StackPanel>
 										</DataTemplate>
 									</ItemsControl.ItemTemplate>
 								</ItemsControl>
@@ -154,6 +175,21 @@
 							</StackPanel>
 
 							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasPowerActions}" />
+							<StackPanel IsVisible="{Binding HasLogoffActions}">
+								<TextBlock Text="Logoff" Classes="toolGroupHeader" />
+								<ItemsControl ItemsSource="{Binding LogoffActions}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="models:PowerActionItem">
+											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+									</ItemsControl>
+							</StackPanel>
+
+							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasLogoffActions}" />
 							<StackPanel>
 								<TextBlock Text="UEFI" Classes="toolGroupHeader" />
 								<WrapPanel>
@@ -195,6 +231,56 @@
 							</DataTemplate>
 						</ListBox.ItemTemplate>
 					</ListBox>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Wake Devices" ToolTip.Tip="Configure which devices may wake the computer from sleep or hibernation.">
+				<Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
+					<Grid.DataTemplates>
+						<TreeDataTemplate x:DataType="models:WakeDeviceGroup" ItemsSource="{Binding Devices}">
+							<TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+						</TreeDataTemplate>
+						<DataTemplate x:DataType="models:WakeDeviceItem">
+							<TextBlock Text="{Binding Name}" TextWrapping="Wrap" Classes.wakeFromAny="{Binding CanWakeFromAny}"
+									   ToolTip.Tip="{Binding Tooltip}" />
+						</DataTemplate>
+					</Grid.DataTemplates>
+					<StackPanel IsVisible="{Binding UsesMacWakeSettings}" Spacing="8">
+						<TextBlock Text="Wake for Network Access" FontWeight="SemiBold" />
+						<Button Content="System Settings" Command="{Binding OpenWakeSettingsCommand}"
+								HorizontalAlignment="Left" ToolTip.Tip="Open macOS System Settings for Energy or Battery options" />
+					</StackPanel>
+					<Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding WakeDevicesSupported}">
+						<WrapPanel>
+							<Button Content="&#x21BB;" Command="{Binding RefreshWakeDevicesCommand}"
+									ToolTip.Tip="Refresh wake devices" AutomationProperties.Name="Refresh wake devices" />
+							<Button Content="&#x2192;" Command="{Binding ArmWakeDeviceCommand}"
+									ToolTip.Tip="Arm selected device" AutomationProperties.Name="Arm selected device" />
+							<Button Content="&#x2190;" Command="{Binding DisarmWakeDeviceCommand}"
+									ToolTip.Tip="Disarm selected device" AutomationProperties.Name="Disarm selected device" />
+							<ProgressBar Width="100" Height="4" Margin="12,0" IsIndeterminate="True" IsVisible="{Binding IsWakeDeviceBusy}" />
+						</WrapPanel>
+						<TextBlock Grid.Row="1" Text="{Binding WakeDevicePrivilegeMessage}"
+								   IsVisible="{Binding !IsElevated}" TextWrapping="Wrap" Margin="0,8" />
+						<Grid Grid.Row="2" ColumnDefinitions="*,16,*" RowDefinitions="Auto,*" Margin="0,8,0,0">
+							<TextBlock Text="Available Devices" FontWeight="SemiBold" Margin="0,0,0,8" />
+							<TextBlock Grid.Column="2" Text="Armed Devices" FontWeight="SemiBold" Margin="0,0,0,8" />
+							<TreeView Grid.Row="1" Classes="wakeDevices" ItemsSource="{Binding AvailableWakeDeviceGroups}"
+									  SelectedItem="{Binding SelectedAvailableWakeDevice}" DoubleTapped="OnAvailableWakeDeviceDoubleTapped" />
+							<TextBlock Grid.Row="1" Text="No available devices" Margin="12"
+									   IsHitTestVisible="False" IsVisible="{Binding !HasAvailableWakeDevices}" />
+							<TreeView Grid.Row="1" Grid.Column="2" Classes="wakeDevices" ItemsSource="{Binding ArmedWakeDeviceGroups}"
+									  SelectedItem="{Binding SelectedArmedWakeDevice}" DoubleTapped="OnArmedWakeDeviceDoubleTapped" />
+							<TextBlock Grid.Row="1" Grid.Column="2" Text="No armed devices" Margin="12"
+									   IsHitTestVisible="False" IsVisible="{Binding !HasArmedWakeDevices}" />
+						</Grid>
+						<Expander Grid.Row="3" Header="UEFI Wake Support" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+							<ScrollViewer MaxHeight="130">
+								<TextBlock TextWrapping="Wrap"
+									Text="In UEFI/BIOS, look for USB Wake Support, Resume by USB, or Wake from S3/S4 for keyboards and mice. For network devices, check Wake-on-LAN, Power On by PCI-E, or PME Event Wake Up. ErP/EuP or Deep Sleep may cut standby power to USB ports and network adapters; consult your motherboard manual before changing them. Setting names and supported sleep states vary. An armed device still needs standby power and compatible firmware/driver settings; test Sleep and Hibernate separately." />
+							</ScrollViewer>
+						</Expander>
+					</Grid>
 				</Grid>
 			</TabItem>
 

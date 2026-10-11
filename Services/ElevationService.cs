@@ -161,18 +161,40 @@ public static class ElevationService
 	{
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
-			// pkexec sh -c 'setsid "$@" </dev/null >/dev/null 2>&1 &' sh <exe> [args...]
+			// pkexec sh -c 'setsid "$@" </dev/null >/dev/null 2>&1 &' sh env <session> <exe> [args...]
 			//   setsid    starts the real executable in a new session so it is not a child that pkexec
 			//             is waiting on.
 			//   "$@" &    backgrounds the real executable so the wrapping "sh -c" returns immediately
 			//             instead of waiting for it to exit.
 			//   redirects detach stdio so pkexec has no open pipe to the elevated app to wait on.
-			// The leading "sh" argument fills $0 inside the script; "$@" then expands to <exe> [args...].
+			// The leading "sh" fills $0; "$@" expands to env, session settings, <exe> and [args...].
 			var startInfo = new ProcessStartInfo("pkexec") { UseShellExecute = false };
 			startInfo.ArgumentList.Add("sh");
 			startInfo.ArgumentList.Add("-c");
 			startInfo.ArgumentList.Add("setsid \"$@\" </dev/null >/dev/null 2>&1 &");
 			startInfo.ArgumentList.Add("sh");
+			startInfo.ArgumentList.Add("env");
+
+			// pkexec sanitizes the environment; restore only desktop connection settings after
+			// authentication, not arbitrary variables that could affect root's library loading.
+			foreach (var name in new[] { "DISPLAY", "XAUTHORITY", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "XDG_SESSION_ID" })
+			{
+				var value = Environment.GetEnvironmentVariable(name);
+				if (name == "XAUTHORITY" && string.IsNullOrEmpty(value))
+				{
+					var authorityPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".Xauthority");
+					if (File.Exists(authorityPath))
+					{
+						value = authorityPath;
+					}
+				}
+
+				if (!string.IsNullOrEmpty(value))
+				{
+					startInfo.ArgumentList.Add($"{name}={value}");
+				}
+			}
+
 			startInfo.ArgumentList.Add(exePath);
 			foreach (var arg in originalArgs)
 			{

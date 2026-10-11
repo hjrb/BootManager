@@ -23,6 +23,9 @@ public enum PowerActionKind
 	Hibernate,
 	Shutdown,
 	FullShutdown,
+
+	/// <summary>Signs out the current desktop session without rebooting the computer.</summary>
+	Logoff,
 }
 
 /// <summary>The toolbar section a power action belongs to.</summary>
@@ -31,6 +34,9 @@ public enum PowerActionCategory
 	Reboot,
 	Sleep,
 	Shutdown,
+
+	/// <summary>Actions that end the desktop session without powering off.</summary>
+	Logoff,
 }
 
 /// <summary>
@@ -38,9 +44,29 @@ public enum PowerActionCategory
 /// </summary>
 public static class SystemPowerService
 {
+	/// <summary>Reads Windows power capabilities without elevation or changing power settings; zero indicates failure.</summary>
+	[DllImport("powrprof.dll", SetLastError = true)]
+	[return: MarshalAs(UnmanagedType.U1)]
+	private static extern bool GetPwrCapabilities(out WindowsPowerCapabilities capabilities);
+
+	/// <summary>Reserves the full 76-byte Win32 SYSTEM_POWER_CAPABILITIES buffer, exposing only hibernation flags.</summary>
+	/// <remarks>Native BOOLEAN fields occupy one byte. S4 support and a hibernation file must both be present.</remarks>
+	[StructLayout(LayoutKind.Explicit, Size = 76)]
+	private struct WindowsPowerCapabilities
+	{
+		/// <summary>Whether Windows currently supports the S4 hibernation state.</summary>
+		[FieldOffset(6)]
+		public byte SystemS4;
+
+		/// <summary>Whether Windows has a hibernation file available.</summary>
+		[FieldOffset(8)]
+		public byte HibernationFilePresent;
+	}
+
 	/// <summary>
 	/// Returns the supported actions for the current OS, in the order they should be shown in the UI.
 	/// </summary>
+	/// <remarks>Windows Hibernate stays visible even when unavailable, so the UI can offer to enable it.</remarks>
 	public static IReadOnlyList<PowerActionKind> GetSupportedActions()
 	{
 		if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -53,6 +79,7 @@ public static class SystemPowerService
 				PowerActionKind.Hibernate,
 				PowerActionKind.Shutdown,
 				PowerActionKind.FullShutdown,
+				PowerActionKind.Logoff,
 			];
 		}
 
@@ -65,6 +92,8 @@ public static class SystemPowerService
 				PowerActionKind.Sleep,
 				PowerActionKind.Hibernate,
 				PowerActionKind.Shutdown,
+				.. string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("XDG_SESSION_ID"))
+					? Array.Empty<PowerActionKind>() : new[] { PowerActionKind.Logoff },
 			];
 		}
 
@@ -77,10 +106,48 @@ public static class SystemPowerService
 				PowerActionKind.DelayedReboot,
 				PowerActionKind.Sleep,
 				PowerActionKind.Shutdown,
+				PowerActionKind.Logoff,
 			];
 		}
 
 		return [];
+	}
+
+	/// <summary>Checks Windows hibernation availability without requiring administrator rights.</summary>
+	public static bool IsWindowsHibernateAvailable() =>
+		RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
+		&& GetPwrCapabilities(out var capabilities)
+		&& capabilities.SystemS4 != 0 && capabilities.HibernationFilePresent != 0;
+
+	/// <summary>Changes Windows hibernation configuration, without entering hibernation.</summary>
+	/// <param name="enabled">Whether to enable hibernation; disabling also disables Fast Startup and hybrid sleep.</param>
+	/// <remarks>Requires elevation. powercfg /hibernate on enables hibernation; /type full supports full sessions; off removes the file.</remarks>
+	public static async Task SetWindowsHibernateEnabledAsync(bool enabled)
+	{
+		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			throw new PlatformNotSupportedException("Hibernation configuration is supported only on Windows.");
+		}
+
+		if (!ElevationService.IsElevated())
+		{
+			throw new InvalidOperationException("Changing hibernation requires administrator rights.");
+		}
+
+		var result = await ProcessRunner.RunAsync("powercfg.exe", ["/hibernate", enabled ? "on" : "off"]).ConfigureAwait(false);
+		if (!result.Succeeded)
+		{
+			throw new InvalidOperationException($"Changing hibernation failed (exit code {result.ExitCode}): {result.StandardError}");
+		}
+
+		if (enabled)
+		{
+			var fullFileResult = await ProcessRunner.RunAsync("powercfg.exe", ["/hibernate", "/type", "full"]).ConfigureAwait(false);
+			if (!fullFileResult.Succeeded)
+			{
+				throw new InvalidOperationException($"Creating a full hibernation file failed (exit code {fullFileResult.ExitCode}): {fullFileResult.StandardError}");
+			}
+		}
 	}
 
 	/// <summary>
@@ -90,6 +157,7 @@ public static class SystemPowerService
 	{
 		PowerActionKind.Sleep or PowerActionKind.Hibernate => PowerActionCategory.Sleep,
 		PowerActionKind.Shutdown or PowerActionKind.FullShutdown => PowerActionCategory.Shutdown,
+		PowerActionKind.Logoff => PowerActionCategory.Logoff,
 		_ => PowerActionCategory.Reboot,
 	};
 
@@ -99,14 +167,15 @@ public static class SystemPowerService
 	/// </summary>
 	public static string GetLabel(PowerActionKind action) => action switch
 	{
-		PowerActionKind.GracefulReboot => "Now (graceful)",
-		PowerActionKind.ImmediateReboot => "Now (forced)",
+		PowerActionKind.GracefulReboot => "Graceful",
+		PowerActionKind.ImmediateReboot => "Forced",
 		PowerActionKind.DelayedReboot => $"Delayed ({AppSettings.PowerCountdown.TotalSeconds:0}s)",
 		PowerActionKind.Sleep => "Sleep",
 		PowerActionKind.Hibernate => "Hibernate",
 		// Windows always shuts down into the hybrid boot cache unless the full variant is used.
 		PowerActionKind.Shutdown => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Hybrid" : "Shutdown",
 		PowerActionKind.FullShutdown => "Full",
+		PowerActionKind.Logoff => "Logoff",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
 	};
 
@@ -123,6 +192,7 @@ public static class SystemPowerService
 		PowerActionKind.Hibernate => "Hibernate",
 		PowerActionKind.Shutdown => "Shutdown",
 		PowerActionKind.FullShutdown => "Full shutdown",
+		PowerActionKind.Logoff => "Logoff",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
 	};
 
@@ -138,11 +208,12 @@ public static class SystemPowerService
 		PowerActionKind.DelayedReboot =>
 			$"Shows a {AppSettings.PowerCountdown.TotalSeconds:0} second countdown so you can save your work, then reboots.",
 		PowerActionKind.Sleep =>
-			"Suspends the machine to memory, keeping the session open. On Windows this suspends to disk instead when hibernation is enabled.",
+			"Suspends the machine to memory, keeping the session open.",
 		PowerActionKind.Hibernate =>
 			"Writes memory to disk and powers off, restoring the session on the next start. Like Fast Startup, this leaves file systems in a state another operating system must not write to.",
 		PowerActionKind.Shutdown => "Powers the machine off.",
 		PowerActionKind.FullShutdown => "Powers the machine off without the hybrid boot cache, for a true cold start.",
+		PowerActionKind.Logoff => "Signs out the current desktop session. Save your work first; on Linux applications are terminated without prompting.",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
 	};
 
@@ -162,6 +233,11 @@ public static class SystemPowerService
 	/// </remarks>
 	public static string GetCommandLine(PowerActionKind action)
 	{
+		if (action == PowerActionKind.Sleep && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			return "powrprof.dll!SetSuspendState(false, false, false) (native Windows API)";
+		}
+
 		if (action == PowerActionKind.DelayedReboot)
 		{
 			return $"After the countdown: {GetCommandLine(PowerActionKind.ImmediateReboot)}";
@@ -236,9 +312,7 @@ public static class SystemPowerService
 				break;
 
 			case PowerActionKind.Sleep:
-				// Windows ships no sleep tool; SetSuspendState is the documented entry point, and
-				// rundll32 is the only way to reach it without loading the library into this process.
-				if (windows) return new PowerCommand("rundll32.exe", ["powrprof.dll,SetSuspendState", "0,1,0"]);
+				if (windows) throw new NotSupportedException("Windows sleep is handled by the native SetSuspendState API, not a command.");
 				if (linux) return new PowerCommand("systemctl", ["suspend"]);
 				if (mac) return new PowerCommand("pmset", ["sleepnow"]);
 				break;
@@ -251,6 +325,23 @@ public static class SystemPowerService
 			case PowerActionKind.FullShutdown:
 				if (windows) return new PowerCommand("shutdown.exe", ["/s", "/f", "/t", "0"]);
 				throw new NotSupportedException("This operating system does not support a separate full shutdown action.");
+
+			case PowerActionKind.Logoff:
+				// /l signs out the caller's Windows session; omitting /f allows unsaved-work prompts.
+				if (windows) return new PowerCommand("shutdown.exe", ["/l"]);
+				if (linux)
+				{
+					var sessionId = Environment.GetEnvironmentVariable("XDG_SESSION_ID");
+					if (string.IsNullOrWhiteSpace(sessionId))
+					{
+						throw new NotSupportedException("The current desktop session could not be determined for logoff.");
+					}
+					// terminate-session ends only the specified login session, not every session of the user.
+					return new PowerCommand("loginctl", ["terminate-session", sessionId]);
+				}
+				// The System Events logout request lets macOS applications prompt about unsaved work.
+				if (mac) return new PowerCommand("osascript", ["-e", "tell application \"System Events\" to log out"]);
+				break;
 
 			default:
 				throw new ArgumentOutOfRangeException(nameof(action), action, null);
@@ -269,6 +360,20 @@ public static class SystemPowerService
 	/// </remarks>
 	public static async Task ExecuteAsync(PowerActionKind action, CancellationToken cancellationToken = default)
 	{
+		if (action == PowerActionKind.Sleep && RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+		{
+			await Task.Run(() =>
+			{
+				cancellationToken.ThrowIfCancellationRequested();
+				WindowsFirmwareVariables.EnableShutdownPrivilege();
+				if (!SetSuspendState(false, false, false))
+				{
+					throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error(), "Windows could not enter sleep.");
+				}
+			}, cancellationToken).ConfigureAwait(false);
+			return;
+		}
+
 		var command = ResolveCommand(action);
 		var result = await ProcessRunner.RunAsync(command.FileName, command.Arguments, cancellationToken).ConfigureAwait(false);
 		if (!result.Succeeded)
@@ -277,6 +382,18 @@ public static class SystemPowerService
 				$"{command.FileName} failed with exit code {result.ExitCode}: {result.StandardError}");
 		}
 	}
+
+	/// <summary>Suspends Windows with one-byte BOOLEAN arguments, unlike the incompatible rundll32 callback signature.</summary>
+	/// <remarks>
+	/// Hibernate false selects sleep; force is unused; wakeupEventsDisabled false preserves wake events.
+	/// Requires SeShutdownPrivilege. Zero indicates failure and exposes a Win32 last-error code.
+	/// </remarks>
+	[DllImport("powrprof.dll", SetLastError = true)]
+	[return: MarshalAs(UnmanagedType.U1)]
+	private static extern bool SetSuspendState(
+		[MarshalAs(UnmanagedType.U1)] bool hibernate,
+		[MarshalAs(UnmanagedType.U1)] bool force,
+		[MarshalAs(UnmanagedType.U1)] bool wakeupEventsDisabled);
 }
 
 /// <summary>
