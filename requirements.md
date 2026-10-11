@@ -45,6 +45,11 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
 
     The `help` output must support showing the concrete command each power action runs on the current
     operating system, so the text stays accurate per platform instead of describing only one of them.
+
+    Starting the application without a command must never show a console window on Windows, not even
+    briefly - the executable is therefore a GUI subsystem one, and a command line invocation attaches
+    to the console of its caller instead of allocating one. A shell consequently does not wait for the
+    process; redirection into a file or a pipe is unaffected.
 11. The actions of the boot options view live in a toolbar above the boot entry list. Its buttons are
     grouped into labelled sections - Reboot, Sleep, Shutdown, UEFI and Information, separated by a
     divider - and the toolbar wraps when the window is too narrow to show all sections side by side.

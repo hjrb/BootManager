@@ -235,9 +235,17 @@ Every command except `help` needs elevated rights. Unlike the window, the comman
 offer to restart itself — it prints an error and exits with a non-zero code, so scripts can react to it.
 Start your console as Administrator, or use `sudo`, before running these.
 
-Starting the program without a command opens the window. When you do that from a console, the console
-stays occupied until you close the window — that is the same executable behaving like any other console
-program. Use `Start-Process BootManager` or `start BootManager` to get your prompt back right away.
+Starting the program without a command opens the window, and no console window ever appears with it —
+not from Explorer, a shortcut or the task scheduler.
+
+The flip side on Windows: because the executable is a windowed program, your shell does not wait for
+it, so an interactive prompt comes back before the output does. The output itself is written into
+your console, and redirecting it into a file or a pipe works as usual:
+
+```powershell
+BootManager list | Out-Host          # PowerShell: waits and prints in order
+cmd /c "BootManager list > out.txt"  # redirection into a file
+```
 
 ### Example
 

@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-	<!-- Console subsystem, not WinExe: only then does a Windows shell wait for the process and keep
-		 the CLI output in front of the prompt. The console window that Windows creates when there is
-		 no shell is disposed of by CommandLineInterface.DetachFromOwnConsole. -->
-	<OutputType>Exe</OutputType>
+	<!-- GUI subsystem: a console subsystem process makes Windows create a console window whenever it
+		 is started without one, and since Windows 11 hosts that console in a separate terminal
+		 application, the window can no longer be hidden away by the process itself. In CLI mode
+		 CommandLineInterface.AttachToParentConsole writes into the caller's console instead. -->
+	<OutputType>WinExe</OutputType>
 	<TargetFramework>net10.0</TargetFramework>
 	<Nullable>enable</Nullable>
 	<ImplicitUsings>enable</ImplicitUsings>
