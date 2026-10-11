@@ -50,3 +50,7 @@ jobs:
       # without spending the time that all seven release targets would take.
       - name: Smoke-test the publish pipeline
         run: dotnet publish BootManager.csproj --configuration Release --no-restore -o "${{ runner.temp }}/smoke" /p:DebugType=None
+
+      # Spelling is checked against cspell.json, the same word list the editor extension uses.
+      - name: Check spelling
+        run: npx --yes cspell lint "**/*.{cs,axaml,md,ps1,json,yml,yaml,manifest,slnx,csproj}" --gitignore --no-progress

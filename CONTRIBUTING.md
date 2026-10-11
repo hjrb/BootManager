@@ -38,6 +38,15 @@ Cross-compiling works from any of the three operating systems — the compiler o
 target's runtime package, which NuGet downloads on its own. Only *testing* a build requires the
 matching machine.
 
+CI also spell-checks the repository. To run the same check locally (Node.js required):
+
+```powershell
+npx --yes cspell lint "**/*.{cs,axaml,md,ps1,json,yml,yaml,manifest,slnx,csproj}" --gitignore --no-progress
+```
+
+Project-specific terms belong in `cspell.json`, which the VS Code spell checker extension reads
+as well.
+
 ---
 
 ## Testing a change
@@ -47,7 +56,7 @@ opening a pull request, run the affected code path on at least one real machine 
 pull request which one. If the change touches platform-specific code under `Services`, it has to
 be tried on that platform.
 
-Take care with anything that writes: `Set as Default` and `Set as Next Boot` change how your
+Take care with anything that writes: `Default` and `Next Boot` change how your
 computer starts. Note down your current boot order before experimenting, so you can put it back.
 
 ---

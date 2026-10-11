@@ -88,6 +88,7 @@ public partial class MainViewModel : ViewModelBase
 	/// not flash up before the real check has run.
 	/// </summary>
 	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
 	public partial bool IsElevated { get; set; } = true;
 
 	/// <summary>Explains the consequences of missing privileges; shown in the warning banner.</summary>
@@ -97,8 +98,31 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>Caption of the restart button, which differs per platform.</summary>
 	public string RestartElevatedLabel => ElevationService.RestartActionLabel;
 
-	/// <summary>Power actions supported by this OS, shown in the popup menu.</summary>
-	public IReadOnlyList<PowerActionKind> PowerActions => SystemPowerService.GetSupportedActions();
+	/// <summary>Reboot actions supported by this OS, shown in the toolbar's reboot section.</summary>
+	public IReadOnlyList<PowerActionItem> RebootActions => GetPowerActions(PowerActionCategory.Reboot);
+
+	/// <summary>Sleep actions supported by this OS, shown in the toolbar's sleep section.</summary>
+	public IReadOnlyList<PowerActionItem> SleepActions => GetPowerActions(PowerActionCategory.Sleep);
+
+	/// <summary>Shutdown actions supported by this OS, shown in the toolbar's shutdown section.</summary>
+	public IReadOnlyList<PowerActionItem> ShutdownActions => GetPowerActions(PowerActionCategory.Shutdown);
+
+	/// <summary>Whether this OS offers any reboot action; hides the toolbar section when it does not.</summary>
+	public bool HasRebootActions => RebootActions.Count > 0;
+
+	/// <summary>Whether this OS offers any sleep action; hides the toolbar section when it does not.</summary>
+	public bool HasSleepActions => SleepActions.Count > 0;
+
+	/// <summary>Whether this OS offers any shutdown action; hides the toolbar section when it does not.</summary>
+	public bool HasShutdownActions => ShutdownActions.Count > 0;
+
+	/// <summary>Whether this OS offers any power action at all; drives the divider before the UEFI section.</summary>
+	public bool HasPowerActions => SystemPowerService.GetSupportedActions().Count > 0;
+
+	private static IReadOnlyList<PowerActionItem> GetPowerActions(PowerActionCategory category) =>
+		[.. SystemPowerService.GetSupportedActions()
+			.Where(action => SystemPowerService.GetCategory(action) == category)
+			.Select(PowerActionItem.Create)];
 
 	/// <summary>Tooltip for the refresh button on the boot options tab.</summary>
 	public string RefreshTooltip =>
@@ -121,10 +145,6 @@ public partial class MainViewModel : ViewModelBase
 			: "Asks the firmware to open its setup screen on the next boot. Does not restart the machine. ")
 		+ $"\n\nRuns: {_bootManagerService.FirmwareSetupCommand}";
 
-	/// <summary>Tooltip for the power button, which opens the reboot and shutdown menu.</summary>
-	public string PowerTooltip =>
-		"Reboot and shutdown actions supported by this operating system. Each entry shows the command it runs.";
-
 	/// <summary>Whether an operation is in progress; drives the progress bar.</summary>
 	[ObservableProperty]
 	public partial bool IsBusy { get; set; }
@@ -138,7 +158,7 @@ public partial class MainViewModel : ViewModelBase
 	public partial bool IsNotificationError { get; set; }
 
 	/// <summary>Re-reads the boot entries and re-selects the one that will be used for the next boot.</summary>
-	[RelayCommand]
+	[RelayCommand(CanExecute = nameof(IsElevated))]
 	private async Task RefreshAsync()
 	{
 		// Reading firmware variables is privileged on every platform, so refuse with a clear message
@@ -231,7 +251,7 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>The command the firmware setup request runs, shown in tooltips and in the countdown window.</summary>
 	public string FirmwareSetupCommand => _bootManagerService.FirmwareSetupCommand;
 
-	/// <summary>Executes a shutdown or reboot action chosen from the power popup menu.</summary>
+	/// <summary>Executes a shutdown or reboot action chosen from the toolbar.</summary>
 	public async Task ExecutePowerActionAsync(PowerActionKind action)
 	{
 		if (action == PowerActionKind.DelayedReboot)
@@ -242,7 +262,7 @@ public partial class MainViewModel : ViewModelBase
 		await RunGuardedAsync(async () =>
 		{
 			await SystemPowerService.ExecuteAsync(action).ConfigureAwait(false);
-			ShowNotification($"{SystemPowerService.GetLabel(action)} started.", isError: false);
+			ShowNotification($"{SystemPowerService.GetFullName(action)} started.", isError: false);
 		});
 	}
 

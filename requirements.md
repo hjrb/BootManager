@@ -45,21 +45,27 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
 
     The `help` output must support showing the concrete command each power action runs on the current
     operating system, so the text stays accurate per platform instead of describing only one of them.
-11. Add a power control in the main window that opens a popup menu with the supported shutdown/reboot actions for the current OS:
+11. The actions of the boot options view live in a toolbar above the boot entry list. Its buttons are
+    grouped into labelled sections - Reboot, Sleep, Shutdown, UEFI and Information, separated by a
+    divider - and the toolbar wraps when the window is too narrow to show all sections side by side.
+    The power actions supported by the current OS must be reachable as buttons in that toolbar, not
+    hidden behind a popup menu:
     - Reboot now, **graceful**.
     - Reboot now, **forced**.
     - Delayed reboot (20 seconds, with an on-screen countdown and a cancel button).
+    - Sleep, i.e. suspend to memory.
+    - Hibernate, i.e. suspend to disk; hidden on macOS, which has no separate action for it.
     - Shutdown.
     - Full shutdown on Windows only; hidden on Linux and macOS where the OS does not expose a separate action.
     - Unsupported actions for a given OS must be hidden instead of shown as disabled items.
-    - On Linux and macOS, the implementation should still expose the closest equivalent operations that are actually supported by the platform, such as `systemctl reboot`/`poweroff` and `shutdown -r now`/`shutdown -h now`.
+    - On Linux and macOS, the implementation should still expose the closest equivalent operations that are actually supported by the platform, such as `systemctl reboot`/`poweroff`/`suspend`/`hibernate`, `shutdown -r now`/`shutdown -h now` and `pmset sleepnow`.
 12. The application must support two distinct kinds of restart, because the difference decides whether
     unsaved work survives:
     - **Graceful** must route through the operating system mechanism that lets applications ask the
       user about unsaved work. It must therefore be allowed to *not* reboot when an application
       refuses, and that outcome must not be reported as a failure.
     - **Forced/hard** must reboot straight away and terminate applications without warning.
-    - The two must be separate menu entries and separate CLI commands; a single "reboot" action that
+    - The two must be separate buttons and separate CLI commands; a single "reboot" action that
       silently picks one is not sufficient.
     - The graceful path must use `shutdown.exe /r /t 0` **without** `/f` on Windows (a timeout greater
       than zero would imply `/f`), `systemctl reboot --check-inhibitors=yes` on Linux (so inhibitor

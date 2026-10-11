@@ -13,32 +13,7 @@
 	// GitHub deletes the remote branch on merge; this clears the local one too, which
 	// otherwise piles up because squash merges leave branches looking unmerged.
 	"githubPullRequests.deleteBranchAfterMerge": true,
-	"cSpell.words": [
-		"addfirst",
-		"bootmgr",
-		"bootsequence",
-		"csrutil",
-		"dbus",
-		"displayorder",
-		"efibootmgr",
-		"fwbootmgr",
-		"geteuid",
-		"getuid",
-		"hiberboot",
-		"ksmserver",
-		"kwin",
-		"loginwindow",
-		"openbox",
-		"osascript",
-		"pipewire",
-		"plasmashell",
-		"ppid",
-		"pulseaudio",
-		"setdef",
-		"setnext",
-		"ucomm",
-		"wireplumber",
-		"Xorg",
-		"Xwayland"
-	]
+	// The word list lives in cspell.json at the repository root, which the extension picks up
+	// automatically and `npx cspell lint` uses as well.
+	"cSpell.enabled": true
 }
