@@ -81,25 +81,28 @@ The list shows every entry your firmware can boot. Two labels tell you what each
 - **Current default** — what your computer boots every time.
 - **Next boot** — what it will boot the next time you start it.
 
-Select an entry, then choose an action:
+Select an entry, then choose an action from the toolbar above the list. Its buttons are grouped into
+**UEFI**, **Reboot**, **Sleep** and **Shutdown**:
 
 | Button | What it does |
 | --- | --- |
-| **Set as Next Boot** | Boots the selected entry **once**. Afterwards your computer goes back to the default on its own. Use this to start another operating system a single time. |
-| **Set as Default** | Makes the selected entry the **permanent** default, used for every boot until you change it again. |
-| **Open UEFI Setup at Next Boot** | Your computer opens its UEFI/BIOS setup screen the next time it starts, so you don't have to catch the right key during startup. On Windows this only arms the request and does **not** restart now. On Linux the only supported mechanism restarts the machine, so a countdown appears first and gives you time to save your work. |
-| **Refresh** | Re-reads the current state from the firmware. |
-| **Power** | Opens a menu with the reboot and shutdown actions your operating system supports. |
+| UEFI &rsaquo; **Next Boot** | Boots the selected entry **once**. Afterwards your computer goes back to the default on its own. Use this to start another operating system a single time. |
+| UEFI &rsaquo; **Default** | Makes the selected entry the **permanent** default, used for every boot until you change it again. |
+| UEFI &rsaquo; **Setup at Next Boot** | Your computer opens its UEFI/BIOS setup screen the next time it starts, so you don't have to catch the right key during startup. On Windows this only arms the request and does **not** restart now. On Linux the only supported mechanism restarts the machine, so a countdown appears first and gives you time to save your work. |
+| UEFI &rsaquo; **Refresh** | Re-reads the current state from the firmware. |
+| Reboot &rsaquo; **Now (graceful)**, **Now (forced)**, **Delayed** | The restart actions your operating system supports. |
+| Sleep &rsaquo; **Sleep**, **Hibernate** | Suspend to memory or to disk. Hibernate is hidden on macOS, which has no separate action for it. |
+| Shutdown &rsaquo; **Hybrid**, **Full** | Power off. On Windows a plain shutdown keeps the hybrid boot cache; **Full** skips it for a true cold start and exists on Windows only. |
 
 Every button's tooltip shows the exact command or API call it runs, so you can check or reproduce it
 yourself.
 
-The power menu distinguishes two ways to restart:
+The toolbar distinguishes two ways to restart:
 
-- **Reboot now (graceful)** goes through the mechanism that lets applications ask you about unsaved
+- **Now (graceful)** goes through the mechanism that lets applications ask you about unsaved
   work — which means an application can also refuse, and the machine stays up.
-- **Reboot now (forced)** restarts straight away and terminates applications without warning.
-- **Delayed reboot** shows a countdown (20 seconds by default), so you can cancel or reboot immediately.
+- **Now (forced)** restarts straight away and terminates applications without warning.
+- **Delayed** shows a countdown (20 seconds by default), so you can cancel or reboot immediately.
 
 The countdown window also has a **Close apps** button. It asks every one of your running applications
 to close itself — the same thing that happens when you click a window's close button — so each one can

@@ -5,6 +5,7 @@
 		xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:conv="using:Avalonia.Data.Converters"
 		xmlns:localConv="using:BootManager.Converters"
+		xmlns:models="using:BootManager.Models"
 		mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"
 		x:Class="BootManager.Views.MainWindow"
 		x:DataType="vm:MainViewModel"
@@ -34,6 +35,34 @@
 			<Setter Property="Margin" Value="8,4,0,0" />
 		</Style>
 
+		<!-- Toolbar: one bar of captioned groups. The groups wrap as blocks, the buttons inside a
+			 group wrap on their own, and the buttons are flat so the bar reads as a toolbar. -->
+		<Style Selector="Border.toolbar">
+			<Setter Property="Background" Value="#14808080" />
+			<Setter Property="BorderBrush" Value="#30808080" />
+			<Setter Property="BorderThickness" Value="1" />
+			<Setter Property="CornerRadius" Value="6" />
+			<Setter Property="Padding" Value="6,4" />
+		</Style>
+		<Style Selector="TextBlock.toolGroupHeader">
+			<Setter Property="FontSize" Value="11" />
+			<Setter Property="FontWeight" Value="SemiBold" />
+			<Setter Property="Opacity" Value="0.6" />
+			<Setter Property="Margin" Value="4,0,0,2" />
+		</Style>
+		<Style Selector="Rectangle.toolSeparator">
+			<Setter Property="Width" Value="1" />
+			<Setter Property="Fill" Value="#30808080" />
+			<Setter Property="Margin" Value="4,2,8,2" />
+			<Setter Property="VerticalAlignment" Value="Stretch" />
+		</Style>
+		<Style Selector="Border.toolbar Button">
+			<Setter Property="Background" Value="Transparent" />
+			<Setter Property="BorderThickness" Value="0" />
+			<Setter Property="Padding" Value="10,5" />
+			<Setter Property="Margin" Value="0,0,2,2" />
+		</Style>
+
 		<!-- Zebra striping uses a translucent grey so it works in either system theme. -->
 		<Style Selector="ItemsControl.infoRows ContentPresenter:nth-child(2n) > Border">
 			<Setter Property="Background" Value="#18808080" />
@@ -60,7 +89,7 @@
 		<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
 			<TextBlock Grid.Column="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
 					   ToolTip.Tip="Reads and changes the boot entries stored in the firmware's NVRAM." />
-			<Button Grid.Column="1" Content="About" Click="OnAboutButtonClick" ToolTip.Tip="Version, licence and third-party notices." />
+			<Button Grid.Column="1" Content="About" Click="OnAboutButtonClick" ToolTip.Tip="Version, license and third-party notices." />
 		</Grid>
 
 		<Border Grid.Row="1" IsVisible="{Binding !IsElevated}"
@@ -75,11 +104,78 @@
 
 		<TabControl Grid.Row="2">
 			<TabItem Header="Boot Options" ToolTip.Tip="The boot entries the firmware offers, and the actions that change them.">
-				<Grid RowDefinitions="*,Auto" Margin="0,8,0,0">
-					<ListBox Grid.Row="0"
+				<Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
+					<Border Grid.Row="0" Classes="toolbar" Margin="0,0,0,8">
+						<WrapPanel>
+							<StackPanel IsVisible="{Binding HasRebootActions}">
+								<TextBlock Text="Reboot" Classes="toolGroupHeader" />
+								<ItemsControl ItemsSource="{Binding RebootActions}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<WrapPanel />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="models:PowerActionItem">
+											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</StackPanel>
+
+							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasSleepActions}" />
+							<StackPanel IsVisible="{Binding HasSleepActions}">
+								<TextBlock Text="Sleep" Classes="toolGroupHeader" />
+								<ItemsControl ItemsSource="{Binding SleepActions}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<WrapPanel />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="models:PowerActionItem">
+											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</StackPanel>
+
+							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasShutdownActions}" />
+							<StackPanel IsVisible="{Binding HasShutdownActions}">
+								<TextBlock Text="Shutdown" Classes="toolGroupHeader" />
+								<ItemsControl ItemsSource="{Binding ShutdownActions}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate>
+											<WrapPanel />
+										</ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="models:PowerActionItem">
+											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+								</ItemsControl>
+							</StackPanel>
+
+							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasPowerActions}" />
+							<StackPanel>
+								<TextBlock Text="UEFI" Classes="toolGroupHeader" />
+								<WrapPanel>
+									<Button Content="Refresh" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding RefreshTooltip}" />
+									<Button Content="Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding NextBootTooltip}" />
+									<Button Content="Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding DefaultBootTooltip}" />
+									<Button Content="Setup at Next Boot" Click="OnFirmwareSetupButtonClick" ToolTip.Tip="{Binding FirmwareSetupTooltip}" />
+									<Button Content="?" FontWeight="Bold" Click="OnBootEntryHelpClick"
+											ToolTip.Tip="Not everything visible? Click here..." />
+								</WrapPanel>
+							</StackPanel>
+						</WrapPanel>
+					</Border>
+
+					<ListBox Grid.Row="1"
 							 ItemsSource="{Binding BootEntries}"
 							 SelectedItem="{Binding SelectedEntry}"
-							 ToolTip.Tip="Boot entries in firmware boot order. Select one, then use the buttons below.&#x0a;Removable media only appear when they were attached while the machine powered on.">
+							 ToolTip.Tip="Boot entries in firmware boot order. Select one, then use the buttons in the toolbar above.&#x0a;Removable media only appear when they were attached while the machine powered on.">
 						<ListBox.ItemTemplate>
 							<DataTemplate>
 								<Border Padding="8" CornerRadius="4" Classes.current="{Binding IsCurrentDefault}"
@@ -95,16 +191,6 @@
 							</DataTemplate>
 						</ListBox.ItemTemplate>
 					</ListBox>
-
-					<WrapPanel Grid.Row="1" HorizontalAlignment="Right" Margin="0,8,0,0">
-						<Button Content="?" Width="32" HorizontalContentAlignment="Center" FontWeight="Bold" Click="OnBootEntryHelpClick"
-								ToolTip.Tip="Not everything visible? Click here..." />
-						<Button Content="Refresh" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding RefreshTooltip}" />
-						<Button Content="Set as Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding NextBootTooltip}" />
-						<Button Content="Set as Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding DefaultBootTooltip}" />
-						<Button Content="Open UEFI Setup at Next Boot" Click="OnFirmwareSetupButtonClick" ToolTip.Tip="{Binding FirmwareSetupTooltip}" />
-						<Button x:Name="PowerButton" Content="Power" Click="OnPowerButtonClick" ToolTip.Tip="{Binding PowerTooltip}" />
-					</WrapPanel>
 				</Grid>
 			</TabItem>
 

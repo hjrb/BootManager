@@ -3,10 +3,10 @@ using System.Runtime.InteropServices;
 namespace BootManager.Services;
 
 /// <summary>
-/// Cross-platform actions that can be triggered from the main window's power menu.
+/// Cross-platform actions that can be triggered from the main window's toolbar.
 /// </summary>
 /// <remarks>
-/// The menu intentionally only exposes actions that the host operating system supports. A forced
+/// The toolbar intentionally only exposes actions that the host operating system supports. A forced
 /// shutdown exists on Windows, but not in a portable cross-platform form, so Linux and macOS hide it
 /// even though they support a normal shutdown.
 /// </remarks>
@@ -19,8 +19,18 @@ public enum PowerActionKind
 	ImmediateReboot,
 
 	DelayedReboot,
+	Sleep,
+	Hibernate,
 	Shutdown,
 	FullShutdown,
+}
+
+/// <summary>The toolbar section a power action belongs to.</summary>
+public enum PowerActionCategory
+{
+	Reboot,
+	Sleep,
+	Shutdown,
 }
 
 /// <summary>
@@ -39,17 +49,33 @@ public static class SystemPowerService
 				PowerActionKind.GracefulReboot,
 				PowerActionKind.ImmediateReboot,
 				PowerActionKind.DelayedReboot,
+				PowerActionKind.Sleep,
+				PowerActionKind.Hibernate,
 				PowerActionKind.Shutdown,
 				PowerActionKind.FullShutdown,
 			];
 		}
 
-		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
 		{
 			return [
 				PowerActionKind.GracefulReboot,
 				PowerActionKind.ImmediateReboot,
 				PowerActionKind.DelayedReboot,
+				PowerActionKind.Sleep,
+				PowerActionKind.Hibernate,
+				PowerActionKind.Shutdown,
+			];
+		}
+
+		// macOS has no hibernate of its own: it is a mode of sleep there, chosen by the power settings.
+		if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+		{
+			return [
+				PowerActionKind.GracefulReboot,
+				PowerActionKind.ImmediateReboot,
+				PowerActionKind.DelayedReboot,
+				PowerActionKind.Sleep,
 				PowerActionKind.Shutdown,
 			];
 		}
@@ -58,13 +84,43 @@ public static class SystemPowerService
 	}
 
 	/// <summary>
-	/// Returns the UI label for a given power action.
+	/// Returns the toolbar section an action belongs to, so the UI can group the buttons.
+	/// </summary>
+	public static PowerActionCategory GetCategory(PowerActionKind action) => action switch
+	{
+		PowerActionKind.Sleep or PowerActionKind.Hibernate => PowerActionCategory.Sleep,
+		PowerActionKind.Shutdown or PowerActionKind.FullShutdown => PowerActionCategory.Shutdown,
+		_ => PowerActionCategory.Reboot,
+	};
+
+	/// <summary>
+	/// Returns the toolbar button caption for a power action. It is deliberately short, because the
+	/// section heading above the button already names the kind of action.
 	/// </summary>
 	public static string GetLabel(PowerActionKind action) => action switch
 	{
-		PowerActionKind.GracefulReboot => "Reboot now (graceful)",
-		PowerActionKind.ImmediateReboot => "Reboot now (forced)",
-		PowerActionKind.DelayedReboot => $"Delayed reboot ({AppSettings.PowerCountdown.TotalSeconds:0}s)",
+		PowerActionKind.GracefulReboot => "Now (graceful)",
+		PowerActionKind.ImmediateReboot => "Now (forced)",
+		PowerActionKind.DelayedReboot => $"Delayed ({AppSettings.PowerCountdown.TotalSeconds:0}s)",
+		PowerActionKind.Sleep => "Sleep",
+		PowerActionKind.Hibernate => "Hibernate",
+		// Windows always shuts down into the hybrid boot cache unless the full variant is used.
+		PowerActionKind.Shutdown => RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "Hybrid" : "Shutdown",
+		PowerActionKind.FullShutdown => "Full",
+		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
+	};
+
+	/// <summary>
+	/// Returns the self-contained name of a power action, for messages that have no section heading
+	/// to lean on.
+	/// </summary>
+	public static string GetFullName(PowerActionKind action) => action switch
+	{
+		PowerActionKind.GracefulReboot => "Graceful reboot",
+		PowerActionKind.ImmediateReboot => "Forced reboot",
+		PowerActionKind.DelayedReboot => "Delayed reboot",
+		PowerActionKind.Sleep => "Sleep",
+		PowerActionKind.Hibernate => "Hibernate",
 		PowerActionKind.Shutdown => "Shutdown",
 		PowerActionKind.FullShutdown => "Full shutdown",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
@@ -81,6 +137,10 @@ public static class SystemPowerService
 			"Reboots straight away and terminates applications without warning. Unsaved work is lost.",
 		PowerActionKind.DelayedReboot =>
 			$"Shows a {AppSettings.PowerCountdown.TotalSeconds:0} second countdown so you can save your work, then reboots.",
+		PowerActionKind.Sleep =>
+			"Suspends the machine to memory, keeping the session open. On Windows this suspends to disk instead when hibernation is enabled.",
+		PowerActionKind.Hibernate =>
+			"Writes memory to disk and powers off, restoring the session on the next start. Like Fast Startup, this leaves file systems in a state another operating system must not write to.",
 		PowerActionKind.Shutdown => "Powers the machine off.",
 		PowerActionKind.FullShutdown => "Powers the machine off without the hybrid boot cache, for a true cold start.",
 		_ => throw new ArgumentOutOfRangeException(nameof(action), action, null),
@@ -174,6 +234,19 @@ public static class SystemPowerService
 				if (linux) return new PowerCommand("systemctl", ["poweroff"]);
 				if (mac) return new PowerCommand("shutdown", ["-h", "now"]);
 				break;
+
+			case PowerActionKind.Sleep:
+				// Windows ships no sleep tool; SetSuspendState is the documented entry point, and
+				// rundll32 is the only way to reach it without loading the library into this process.
+				if (windows) return new PowerCommand("rundll32.exe", ["powrprof.dll,SetSuspendState", "0,1,0"]);
+				if (linux) return new PowerCommand("systemctl", ["suspend"]);
+				if (mac) return new PowerCommand("pmset", ["sleepnow"]);
+				break;
+
+			case PowerActionKind.Hibernate:
+				if (windows) return new PowerCommand("shutdown.exe", ["/h"]);
+				if (linux) return new PowerCommand("systemctl", ["hibernate"]);
+				throw new NotSupportedException("macOS has no separate hibernate action; its sleep modes are chosen in the power settings.");
 
 			case PowerActionKind.FullShutdown:
 				if (windows) return new PowerCommand("shutdown.exe", ["/s", "/f", "/t", "0"]);

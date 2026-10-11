@@ -47,7 +47,7 @@ opening a pull request, run the affected code path on at least one real machine 
 pull request which one. If the change touches platform-specific code under `Services`, it has to
 be tried on that platform.
 
-Take care with anything that writes: `Set as Default` and `Set as Next Boot` change how your
+Take care with anything that writes: `Default` and `Next Boot` change how your
 computer starts. Note down your current boot order before experimenting, so you can put it back.
 
 ---

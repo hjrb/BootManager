@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using BootManager.Models;
 using BootManager.Services;
 using BootManager.ViewModels;
 
@@ -100,45 +101,21 @@ public partial class MainWindow : Window
 		}
 	}
 
-	/// <summary>Shows the power menu containing only the actions supported by the current OS.</summary>
-	private async void OnPowerButtonClick(object? sender, RoutedEventArgs e)
+	/// <summary>Runs the power action of the clicked toolbar button.</summary>
+	private async void OnPowerActionClick(object? sender, RoutedEventArgs e)
 	{
-		if (DataContext is not MainViewModel viewModel)
+		if (DataContext is not MainViewModel viewModel || sender is not Button { DataContext: PowerActionItem action })
 		{
 			return;
 		}
 
-		var actions = viewModel.PowerActions;
-		if (actions.Count == 0)
+		// The delayed reboot is nothing but the countdown dialog, which reboots once it runs out.
+		if (action.Kind == PowerActionKind.DelayedReboot)
 		{
+			await new PowerCountdownWindow().ShowDialog(this);
 			return;
 		}
 
-		var menu = new ContextMenu();
-		foreach (var action in actions)
-		{
-			var item = new MenuItem
-			{
-				Header = SystemPowerService.GetLabel(action),
-			};
-
-			ToolTip.SetTip(item, SystemPowerService.GetTooltip(action));
-
-			item.Click += async (_, _) =>
-			{
-				if (action == PowerActionKind.DelayedReboot)
-				{
-					var dialog = new PowerCountdownWindow();
-					await dialog.ShowDialog(this);
-					return;
-				}
-
-				await viewModel.ExecutePowerActionAsync(action);
-			};
-
-			menu.Items.Add(item);
-		}
-
-		menu.Open(PowerButton);
+		await viewModel.ExecutePowerActionAsync(action.Kind);
 	}
 }
