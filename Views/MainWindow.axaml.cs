@@ -2,6 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 using BootManager.Models;
 using BootManager.Services;
 using BootManager.ViewModels;
@@ -98,6 +100,41 @@ public partial class MainWindow : Window
 		if (Clipboard is { } clipboard)
 		{
 			await clipboard.SetTextAsync(text);
+		}
+	}
+
+	/// <summary>Arms an available device on double-click, using the same privilege checks as the toolbar.</summary>
+	private async void OnAvailableWakeDeviceDoubleTapped(object? sender, TappedEventArgs e) =>
+		await ExecuteWakeDeviceDoubleTapAsync(e, true);
+
+	/// <summary>Disarms an armed device on double-click, using the same privilege checks as the toolbar.</summary>
+	private async void OnArmedWakeDeviceDoubleTapped(object? sender, TappedEventArgs e) =>
+		await ExecuteWakeDeviceDoubleTapAsync(e, false);
+
+	private async Task ExecuteWakeDeviceDoubleTapAsync(TappedEventArgs e, bool armed)
+	{
+		if (DataContext is not MainViewModel viewModel || e.Source is not Control source)
+		{
+			return;
+		}
+		var item = source as TreeViewItem ?? source.FindAncestorOfType<TreeViewItem>();
+		if (item?.DataContext is not string deviceName)
+		{
+			return;
+		}
+		if (armed)
+		{
+			viewModel.SelectedAvailableWakeDevice = deviceName;
+		}
+		else
+		{
+			viewModel.SelectedArmedWakeDevice = deviceName;
+		}
+		var command = armed ? viewModel.ArmWakeDeviceCommand : viewModel.DisarmWakeDeviceCommand;
+		if (command.CanExecute(null))
+		{
+			e.Handled = true;
+			await command.ExecuteAsync(null);
 		}
 	}
 

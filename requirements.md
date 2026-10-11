@@ -85,6 +85,11 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
       and show empty-list states. Changing permissions requires elevation in both the UI and service;
       never automatically elevate. Use `powercfg /devicequery wake_programmable` and `wake_armed`,
       and `/deviceenablewake` or `/devicedisablewake` with the exact device name.
+      Decode powercfg output using the Windows OEM code page so localized device names remain intact.
+      Group both lists by Mice, Keyboards, Network, USB/HID and Other, using Windows PnP classes rather
+      than translated name guesses. Preserve exact device labels for configuration. Double-clicking
+      available/armed device rows must invoke the same guarded arm/disarm commands as the buttons;
+      group headings and blank space must never change device permissions.
       On Linux, enumerate physical `/sys/devices/**/power/wakeup` attributes without following
       symlinks. Only enabled/disabled states are configurable. Include device paths in labels,
       require root for writes, and validate the selected device against fresh enumeration before

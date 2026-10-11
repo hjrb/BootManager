@@ -35,6 +35,12 @@ under **Available Devices** and currently enabled devices under **Armed Devices*
 and use the right arrow to arm it, or the left arrow to disarm it. Refresh re-reads both lists.
 Changing permissions requires Administrator rights; querying the lists does not automatically elevate.
 
+Both lists are grouped by device type: **Mice**, **Keyboards**, **Network**, **USB / HID**, and **Other**
+for unclassified devices. Double-click an available device to arm it, or an armed device to disarm it.
+Group headings only expand or collapse; double-click changes still require elevated rights.
+Windows grouping uses device classes, not translated names, and preserves the exact device names.
+Linux currently identifies network and USB devices from sysfs paths; remaining devices appear in Other.
+
 Keyboard, mouse, network and USB/HID devices appear when their drivers support configurable waking.
 Wake behavior also depends on firmware, driver settings and the sleep or hibernation state. Disarming
 a keyboard or mouse may mean you need the power button to wake the computer.

@@ -80,6 +80,12 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>Devices currently allowed to wake the computer.</summary>
 	public ObservableCollection<string> ArmedWakeDevices { get; } = [];
 
+	/// <summary>Available wake devices grouped by their hardware type.</summary>
+	public IReadOnlyList<WakeDeviceGroup> AvailableWakeDeviceGroups { get; private set; } = [];
+
+	/// <summary>Armed wake devices grouped by their hardware type.</summary>
+	public IReadOnlyList<WakeDeviceGroup> ArmedWakeDeviceGroups { get; private set; } = [];
+
 	/// <summary>Whether any unarmed wake-programmable device is available.</summary>
 	public bool HasAvailableWakeDevices => AvailableWakeDevices.Count > 0;
 
@@ -99,15 +105,15 @@ public partial class MainViewModel : ViewModelBase
 	[RelayCommand]
 	private async Task OpenWakeSettingsAsync() => await RunGuardedAsync(WakeDeviceService.OpenMacWakeSettingsAsync);
 
-	/// <summary>The available device selected for arming.</summary>
+	/// <summary>The available device or group selected in the tree; only device labels can be armed.</summary>
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(ArmWakeDeviceCommand))]
-	public partial string? SelectedAvailableWakeDevice { get; set; }
+	public partial object? SelectedAvailableWakeDevice { get; set; }
 
-	/// <summary>The armed device selected for disarming.</summary>
+	/// <summary>The armed device or group selected in the tree; only device labels can be disarmed.</summary>
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(DisarmWakeDeviceCommand))]
-	public partial string? SelectedArmedWakeDevice { get; set; }
+	public partial object? SelectedArmedWakeDevice { get; set; }
 
 	/// <summary>Whether a wake-device query or change is in progress.</summary>
 	[ObservableProperty]
@@ -212,8 +218,8 @@ public partial class MainViewModel : ViewModelBase
 	public partial bool IsNotificationError { get; set; }
 
 	private bool CanRefreshWakeDevices() => WakeDevicesSupported && !IsWakeDeviceBusy;
-	private bool CanArmWakeDevice() => CanRefreshWakeDevices() && IsElevated && SelectedAvailableWakeDevice is not null;
-	private bool CanDisarmWakeDevice() => CanRefreshWakeDevices() && IsElevated && SelectedArmedWakeDevice is not null;
+	private bool CanArmWakeDevice() => CanRefreshWakeDevices() && IsElevated && SelectedAvailableWakeDevice is string;
+	private bool CanDisarmWakeDevice() => CanRefreshWakeDevices() && IsElevated && SelectedArmedWakeDevice is string;
 
 	/// <summary>Refreshes both wake-device lists without changing device permissions.</summary>
 	[RelayCommand(CanExecute = nameof(CanRefreshWakeDevices))]
@@ -221,11 +227,11 @@ public partial class MainViewModel : ViewModelBase
 
 	/// <summary>Allows the selected available device to wake the computer.</summary>
 	[RelayCommand(CanExecute = nameof(CanArmWakeDevice))]
-	private async Task ArmWakeDeviceAsync() => await RunWakeDeviceOperationAsync(SelectedAvailableWakeDevice, true);
+	private async Task ArmWakeDeviceAsync() => await RunWakeDeviceOperationAsync(SelectedAvailableWakeDevice as string, true);
 
 	/// <summary>Removes the selected armed device's wake permission.</summary>
 	[RelayCommand(CanExecute = nameof(CanDisarmWakeDevice))]
-	private async Task DisarmWakeDeviceAsync() => await RunWakeDeviceOperationAsync(SelectedArmedWakeDevice, false);
+	private async Task DisarmWakeDeviceAsync() => await RunWakeDeviceOperationAsync(SelectedArmedWakeDevice as string, false);
 
 	private async Task RunWakeDeviceOperationAsync(string? deviceName, bool armed)
 	{
@@ -256,6 +262,10 @@ public partial class MainViewModel : ViewModelBase
 			{
 				ArmedWakeDevices.Add(device);
 			}
+			AvailableWakeDeviceGroups = GroupWakeDevices(devices.Available, devices.DeviceTypes);
+			ArmedWakeDeviceGroups = GroupWakeDevices(devices.Armed, devices.DeviceTypes);
+			OnPropertyChanged(nameof(AvailableWakeDeviceGroups));
+			OnPropertyChanged(nameof(ArmedWakeDeviceGroups));
 		}
 		catch (Exception ex)
 		{
@@ -269,6 +279,11 @@ public partial class MainViewModel : ViewModelBase
 			OnPropertyChanged(nameof(HasArmedWakeDevices));
 		}
 	}
+
+	private static IReadOnlyList<WakeDeviceGroup> GroupWakeDevices(IReadOnlyList<string> names, IReadOnlyDictionary<string, string> types) =>
+		[.. names.GroupBy(name => types.TryGetValue(name, out var type) ? type : "Other")
+			.OrderBy(group => group.Key switch { "Mice" => 0, "Keyboards" => 1, "Network" => 2, "USB / HID" => 3, _ => 4 })
+			.Select(group => new WakeDeviceGroup(group.Key, group.Order(StringComparer.CurrentCultureIgnoreCase).ToArray()))];
 
 	/// <summary>Re-reads the boot entries and re-selects the one that will be used for the next boot.</summary>
 	[RelayCommand(CanExecute = nameof(IsElevated))]

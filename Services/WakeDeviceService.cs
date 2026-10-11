@@ -3,11 +3,19 @@ namespace BootManager.Services;
 /// <summary>Devices that can be configured to wake the computer, and those currently armed.</summary>
 /// <param name="Available">Wake-programmable devices not currently armed.</param>
 /// <param name="Armed">Devices currently permitted to wake the computer.</param>
-public sealed record WakeDeviceLists(IReadOnlyList<string> Available, IReadOnlyList<string> Armed);
+public sealed record WakeDeviceLists(IReadOnlyList<string> Available, IReadOnlyList<string> Armed)
+{
+	/// <summary>Device types indexed by the exact device label; unknown devices remain in Other.</summary>
+	public IReadOnlyDictionary<string, string> DeviceTypes { get; init; } = new Dictionary<string, string>();
+}
 
 /// <summary>Queries and configures Windows and Linux device wake permissions without opening a terminal.</summary>
 public static class WakeDeviceService
 {
+	/// <summary>Returns the Windows OEM code page used by powercfg for redirected device names.</summary>
+	[System.Runtime.InteropServices.DllImport("kernel32.dll")]
+	private static extern uint GetOEMCP();
+
 	/// <summary>Whether this platform supports the wake-device configuration interface.</summary>
 	public static bool IsSupported => OperatingSystem.IsWindows() || OperatingSystem.IsLinux();
 
@@ -26,14 +34,85 @@ public static class WakeDeviceService
 			var devices = await Task.Run(ReadLinuxDevices);
 			return new WakeDeviceLists(
 				devices.Where(device => !device.Armed).Select(device => device.Label).ToArray(),
-				devices.Where(device => device.Armed).Select(device => device.Label).ToArray());
+				devices.Where(device => device.Armed).Select(device => device.Label).ToArray())
+			{
+				DeviceTypes = devices.ToDictionary(device => device.Label, device => GetLinuxDeviceType(device.Path)),
+			};
 		}
 
 		var programmable = ParseNames(await RunAsync(["/devicequery", "wake_programmable"]));
 		var armedNames = ParseNames(await RunAsync(["/devicequery", "wake_armed"]));
 		var armed = programmable.Where(name => armedNames.Contains(name, StringComparer.OrdinalIgnoreCase)).ToArray();
 		return new WakeDeviceLists(
-			programmable.Except(armed, StringComparer.OrdinalIgnoreCase).ToArray(), armed);
+			programmable.Except(armed, StringComparer.OrdinalIgnoreCase).ToArray(), armed)
+		{
+			DeviceTypes = await GetWindowsDeviceTypesAsync(programmable),
+		};
+	}
+
+	/// <summary>Uses locale-independent Windows PnP classes rather than guessing from translated device names.</summary>
+	private static async Task<IReadOnlyDictionary<string, string>> GetWindowsDeviceTypesAsync(string[] deviceNames)
+	{
+		var types = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		try
+		{
+			// Query Unicode inventory through JSON. Force UTF-8 for this PowerShell process only.
+			var script = "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); "
+				+ "$ErrorActionPreference = 'Stop'; ConvertTo-Json -Compress -InputObject "
+				+ "@(Get-CimInstance Win32_PnPEntity | Select-Object Name, PNPClass)";
+			var result = await ProcessRunner.RunAsync("powershell.exe",
+				["-NoProfile", "-NonInteractive", "-Command", script], outputEncoding: System.Text.Encoding.UTF8);
+			if (!result.Succeeded)
+			{
+				throw new InvalidOperationException(result.ErrorText);
+			}
+			using var inventory = System.Text.Json.JsonDocument.Parse(result.StandardOutput);
+			var classes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+			foreach (var entry in inventory.RootElement.EnumerateArray())
+			{
+				var name = entry.GetProperty("Name").GetString();
+				var deviceClass = entry.GetProperty("PNPClass").GetString();
+				if (!string.IsNullOrWhiteSpace(name))
+				{
+					classes.TryAdd(name, deviceClass ?? string.Empty);
+				}
+			}
+			foreach (var name in deviceNames)
+			{
+				// powercfg appends numeric suffixes to distinguish identically named devices.
+				var baseName = System.Text.RegularExpressions.Regex.Replace(name, @" \(\d+\)$", string.Empty);
+				if (classes.TryGetValue(name, out var deviceClass) || classes.TryGetValue(baseName, out deviceClass))
+				{
+					types[name] = deviceClass.ToUpperInvariant() switch
+					{
+						"MOUSE" => "Mice",
+						"KEYBOARD" => "Keyboards",
+						"NET" => "Network",
+						"USB" or "HIDCLASS" => "USB / HID",
+						_ => "Other",
+					};
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			Serilog.Log.Warning(ex, "Device class query failed; unclassified wake devices will appear under Other");
+		}
+		return types;
+	}
+
+	private static string GetLinuxDeviceType(string wakePath)
+	{
+		var directory = Path.GetDirectoryName(Path.GetDirectoryName(wakePath))!;
+		if (Directory.Exists(Path.Combine(directory, "net")))
+		{
+			return "Network";
+		}
+		if (wakePath.Contains("/usb", StringComparison.Ordinal))
+		{
+			return "USB / HID";
+		}
+		return "Other";
 	}
 
 	/// <summary>Arms or disarms a device; requires administrator rights and does not suspend the computer.</summary>
@@ -132,7 +211,9 @@ public static class WakeDeviceService
 
 	private static async Task<string> RunAsync(string[] arguments)
 	{
-		var result = await ProcessRunner.RunAsync("powercfg.exe", arguments).ConfigureAwait(false);
+		System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+		var encoding = System.Text.Encoding.GetEncoding((int)GetOEMCP());
+		var result = await ProcessRunner.RunAsync("powercfg.exe", arguments, outputEncoding: encoding).ConfigureAwait(false);
 		if (!result.Succeeded)
 		{
 			throw new InvalidOperationException($"Wake device command failed (exit code {result.ExitCode}): {result.ErrorText}");

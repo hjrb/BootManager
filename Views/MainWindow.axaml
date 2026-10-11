@@ -20,6 +20,9 @@
 	</Design.DataContext>
 
 	<Window.Styles>
+		<Style Selector="TreeView.wakeDevices TreeViewItem">
+			<Setter Property="IsExpanded" Value="True" />
+		</Style>
 		<Style Selector="Border.current">
 			<Setter Property="BorderBrush" Value="{DynamicResource SystemAccentColor}" />
 			<Setter Property="BorderThickness" Value="2" />
@@ -230,6 +233,14 @@
 
 			<TabItem Header="Wake Devices" ToolTip.Tip="Configure which devices may wake the computer from sleep or hibernation.">
 				<Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
+					<Grid.DataTemplates>
+						<TreeDataTemplate x:DataType="models:WakeDeviceGroup" ItemsSource="{Binding Devices}">
+							<TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+						</TreeDataTemplate>
+						<DataTemplate x:DataType="x:String">
+							<TextBlock Text="{Binding}" TextWrapping="Wrap" />
+						</DataTemplate>
+					</Grid.DataTemplates>
 					<StackPanel IsVisible="{Binding UsesMacWakeSettings}" Spacing="8">
 						<TextBlock Text="Wake for Network Access" FontWeight="SemiBold" />
 						<Button Content="System Settings" Command="{Binding OpenWakeSettingsCommand}"
@@ -250,20 +261,12 @@
 						<Grid Grid.Row="2" ColumnDefinitions="*,16,*" RowDefinitions="Auto,*" Margin="0,8,0,0">
 							<TextBlock Text="Available Devices" FontWeight="SemiBold" Margin="0,0,0,8" />
 							<TextBlock Grid.Column="2" Text="Armed Devices" FontWeight="SemiBold" Margin="0,0,0,8" />
-							<ListBox Grid.Row="1" ItemsSource="{Binding AvailableWakeDevices}"
-									 SelectedItem="{Binding SelectedAvailableWakeDevice}">
-								<ListBox.ItemTemplate>
-									<DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
-								</ListBox.ItemTemplate>
-							</ListBox>
+							<TreeView Grid.Row="1" Classes="wakeDevices" ItemsSource="{Binding AvailableWakeDeviceGroups}"
+									  SelectedItem="{Binding SelectedAvailableWakeDevice}" DoubleTapped="OnAvailableWakeDeviceDoubleTapped" />
 							<TextBlock Grid.Row="1" Text="No available devices" Margin="12"
 									   IsHitTestVisible="False" IsVisible="{Binding !HasAvailableWakeDevices}" />
-							<ListBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding ArmedWakeDevices}"
-									 SelectedItem="{Binding SelectedArmedWakeDevice}">
-								<ListBox.ItemTemplate>
-									<DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
-								</ListBox.ItemTemplate>
-							</ListBox>
+							<TreeView Grid.Row="1" Grid.Column="2" Classes="wakeDevices" ItemsSource="{Binding ArmedWakeDeviceGroups}"
+									  SelectedItem="{Binding SelectedArmedWakeDevice}" DoubleTapped="OnArmedWakeDeviceDoubleTapped" />
 							<TextBlock Grid.Row="1" Grid.Column="2" Text="No armed devices" Margin="12"
 									   IsHitTestVisible="False" IsVisible="{Binding !HasArmedWakeDevices}" />
 						</Grid>
