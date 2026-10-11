@@ -38,6 +38,15 @@ Cross-compiling works from any of the three operating systems — the compiler o
 target's runtime package, which NuGet downloads on its own. Only *testing* a build requires the
 matching machine.
 
+CI also spell-checks the repository. To run the same check locally (Node.js required):
+
+```powershell
+npx --yes cspell lint "**/*.{cs,axaml,md,ps1,json,yml,yaml,manifest,slnx,csproj}" --gitignore --no-progress
+```
+
+Project-specific terms belong in `cspell.json`, which the VS Code spell checker extension reads
+as well.
+
 ---
 
 ## Testing a change
