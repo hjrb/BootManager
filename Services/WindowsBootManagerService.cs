@@ -57,6 +57,34 @@ public sealed partial class WindowsBootManagerService : IBootManagerService
 	/// </summary>
 	private static readonly Regex KeyValueRegex = new(@"^(\S.*?)\s{2,}(.*)$", RegexOptions.Compiled);
 
+	/// <summary>
+	/// Throws a message the user can act on when bcdedit reported a failure.
+	/// </summary>
+	/// <remarks>
+	/// Without Administrator rights bcdedit exits with 1 and prints its "access denied" text to
+	/// standard output, which left the bare exit code as the only thing to show. Missing privileges
+	/// are therefore reported as such, and any other failure carries bcdedit's own wording.
+	/// </remarks>
+	/// <exception cref="UnauthorizedAccessException">The process lacks Administrator rights.</exception>
+	/// <exception cref="InvalidOperationException">bcdedit failed for any other reason.</exception>
+	private static void EnsureSucceeded(ProcessResult result)
+	{
+		if (result.Succeeded)
+		{
+			return;
+		}
+
+		if (!ElevationService.IsElevated())
+		{
+			Log.Warning("bcdedit failed with exit code {ExitCode} while not elevated: {Error}", result.ExitCode, result.ErrorText);
+			throw new UnauthorizedAccessException(
+				$"Access denied: bcdedit requires {ElevationService.RequiredPrivilegeName} privileges. "
+				+ $"Use '{ElevationService.RestartActionLabel}' and try again.");
+		}
+
+		throw new InvalidOperationException($"bcdedit failed with exit code {result.ExitCode}: {result.ErrorText}");
+	}
+
 	/// <inheritdoc />
 	public async Task<IReadOnlyList<BootEntry>> GetBootEntriesAsync(CancellationToken cancellationToken = default)
 	{
@@ -66,11 +94,7 @@ public sealed partial class WindowsBootManagerService : IBootManagerService
 		//                    holds the boot order, plus one block per bootable firmware application.
 		Log.Verbose("Enumerating firmware boot entries via bcdedit /enum firmware");
 		var result = await ProcessRunner.RunAsync("bcdedit.exe", "/enum firmware", cancellationToken).ConfigureAwait(false);
-		if (!result.Succeeded)
-		{
-			// Without Administrator rights bcdedit exits with 1 and prints "Access denied" to stdout.
-			throw new InvalidOperationException($"bcdedit failed with exit code {result.ExitCode}: {result.StandardError}");
-		}
+		EnsureSucceeded(result);
 
 		// Normalize Windows line endings first, so a blank line is reliably "\n\n".
 		var blocks = result.StandardOutput
@@ -215,10 +239,7 @@ public sealed partial class WindowsBootManagerService : IBootManagerService
 		//   {id}              the entry to boot next time.
 		Log.Verbose("Setting one-time next boot entry to {Id} ({Description})", entry.Id, entry.Description);
 		var result = await ProcessRunner.RunAsync("bcdedit.exe", $"/set {{fwbootmgr}} bootsequence {entry.Id}", cancellationToken).ConfigureAwait(false);
-		if (!result.Succeeded)
-		{
-			throw new InvalidOperationException($"bcdedit failed with exit code {result.ExitCode}: {result.StandardError}");
-		}
+		EnsureSucceeded(result);
 
 		Log.Information("Next boot entry changed to '{Description}' ({Id})", entry.Description, entry.Id);
 	}
@@ -233,10 +254,7 @@ public sealed partial class WindowsBootManagerService : IBootManagerService
 		//                     entries keep their relative order and none can be lost by accident.
 		Log.Verbose("Setting default boot entry to {Id} ({Description})", entry.Id, entry.Description);
 		var result = await ProcessRunner.RunAsync("bcdedit.exe", $"/set {{fwbootmgr}} displayorder {entry.Id} /addfirst", cancellationToken).ConfigureAwait(false);
-		if (!result.Succeeded)
-		{
-			throw new InvalidOperationException($"bcdedit failed with exit code {result.ExitCode}: {result.StandardError}");
-		}
+		EnsureSucceeded(result);
 
 		Log.Information("Default boot entry changed to '{Description}' ({Id})", entry.Description, entry.Id);
 	}

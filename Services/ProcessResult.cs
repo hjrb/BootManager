@@ -18,4 +18,14 @@ public sealed record ProcessResult(int ExitCode, string StandardOutput, string S
 {
 	/// <summary>Whether the tool reported success, i.e. an exit code of 0.</summary>
 	public bool Succeeded => ExitCode == 0;
+
+	/// <summary>
+	/// The tool's own explanation of a failure, for use in messages shown to the user.
+	/// </summary>
+	/// <remarks>
+	/// Standard error is preferred, but falls back to standard output because several of the tools used
+	/// here report their errors there; see the remarks on this type.
+	/// </remarks>
+	public string ErrorText =>
+		StandardError.Trim() is { Length: > 0 } error ? error : StandardOutput.Trim();
 }
