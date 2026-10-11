@@ -116,6 +116,80 @@ public partial class MainWindow : Window
 			return;
 		}
 
+		if (viewModel.IsBusy)
+		{
+			return;
+		}
+
+		if (action.HasHibernateMenu && !SystemPowerService.IsWindowsHibernateAvailable() && viewModel.IsElevated)
+		{
+			if (await ConfirmHibernateConfigurationAsync(true))
+			{
+				await viewModel.ConfigureWindowsHibernateAsync(true);
+			}
+			return;
+		}
+
 		await viewModel.ExecutePowerActionAsync(action.Kind);
+	}
+
+	/// <summary>Requests disabling Windows hibernation through the Hibernate dropdown.</summary>
+	private async void OnDisableHibernateClick(object? sender, RoutedEventArgs e)
+	{
+		if (DataContext is not MainViewModel viewModel || viewModel.IsBusy)
+		{
+			return;
+		}
+
+		if (!viewModel.IsElevated)
+		{
+			await viewModel.ConfigureWindowsHibernateAsync(false);
+			return;
+		}
+
+		if (await ConfirmHibernateConfigurationAsync(false))
+		{
+			await viewModel.ConfigureWindowsHibernateAsync(false);
+		}
+	}
+
+	/// <summary>Confirms a hibernation configuration change without immediately hibernating the machine.</summary>
+	private Task<bool> ConfirmHibernateConfigurationAsync(bool enabled)
+	{
+		var dialog = new Window
+		{
+			Title = enabled ? "Enable Hibernate?" : "Disable Hibernate?",
+			Width = 420,
+			SizeToContent = SizeToContent.Height,
+			CanResize = false,
+			WindowStartupLocation = WindowStartupLocation.CenterOwner,
+		};
+		var confirm = new Button { Content = enabled ? "Enable Hibernate" : "Disable Hibernate" };
+		var cancel = new Button { Content = "Cancel", IsCancel = true };
+		confirm.Click += (_, _) => dialog.Close(true);
+		cancel.Click += (_, _) => dialog.Close(false);
+		dialog.Content = new StackPanel
+		{
+			Margin = new Avalonia.Thickness(20),
+			Spacing = 16,
+			Children =
+			{
+				new TextBlock
+				{
+					Text = enabled
+						? "Hibernate is disabled or unavailable. Enable it now? This creates a hibernation file on the system drive."
+						: "Disable hibernation? This removes the hibernation file and also disables Fast Startup and hybrid sleep.",
+					TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+				},
+				new StackPanel
+				{
+					Orientation = Avalonia.Layout.Orientation.Horizontal,
+					HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
+					Spacing = 8,
+					Children = { cancel, confirm },
+				},
+			},
+		};
+		return dialog.ShowDialog<bool>(this);
 	}
 }

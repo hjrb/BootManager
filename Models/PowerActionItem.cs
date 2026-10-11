@@ -14,7 +14,17 @@ namespace BootManager.Models;
 /// <param name="Tooltip">The explanation and the command line, shown as the button's tooltip.</param>
 public sealed record PowerActionItem(PowerActionKind Kind, string Label, string Tooltip)
 {
+	/// <summary>Whether this action offers Windows hibernation configuration in a dropdown.</summary>
+	public bool HasHibernateMenu => Kind == PowerActionKind.Hibernate && OperatingSystem.IsWindows();
+
+	/// <summary>Whether hibernation is unavailable; the button remains clickable to offer configuration.</summary>
+	public bool IsUnavailable { get; init; }
+
 	/// <summary>Builds the display form of a power action.</summary>
 	public static PowerActionItem Create(PowerActionKind kind) =>
-		new(kind, SystemPowerService.GetLabel(kind), SystemPowerService.GetTooltip(kind));
+		new(kind, SystemPowerService.GetLabel(kind), SystemPowerService.GetTooltip(kind))
+		{
+			IsUnavailable = kind == PowerActionKind.Hibernate && OperatingSystem.IsWindows()
+				&& !SystemPowerService.IsWindowsHibernateAvailable(),
+		};
 }

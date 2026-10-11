@@ -22,7 +22,34 @@ Runs on **Windows**, **Linux** and **macOS**, with both a graphical window and a
   firmware memory, so nothing can be read or changed without them.
 - On Linux, the `efibootmgr` package must be installed.
 
+On Linux, **Restart with sudo** uses `pkexec` and a graphical polkit password prompt. It requires
+`pkexec` and a running polkit authentication agent, and retains the desktop display connection when
+launching the elevated window.
+
 ---
+
+## Wake Devices
+
+The **Wake Devices** tab follows **Boot Options**. On Windows, it lists wake-programmable devices
+under **Available Devices** and currently enabled devices under **Armed Devices**. Select a device
+and use the right arrow to arm it, or the left arrow to disarm it. Refresh re-reads both lists.
+Changing permissions requires Administrator rights; querying the lists does not automatically elevate.
+
+Keyboard, mouse, network and USB/HID devices appear when their drivers support configurable waking.
+Wake behavior also depends on firmware, driver settings and the sleep or hibernation state. Disarming
+a keyboard or mouse may mean you need the power button to wake the computer.
+
+On Linux, the same lists expose physical devices with readable `power/wakeup` attributes under
+`/sys/devices`. Labels include their physical paths, and USB product names when available. Arming
+and disarming require root and write `enabled` or `disabled` to the selected device's existing
+attribute. These are live settings: reconnecting, rebooting, or suspend/resume may reset them.
+The app does not install persistent udev rules or systemd services, toggle ACPI wake sources, or
+configure Wake-on-LAN through ethtool. USB endpoints and controllers may both need enabling.
+See [ArchWiki wakeup triggers](https://wiki.archlinux.org/title/Power_management/Wakeup_triggers).
+
+On macOS, the tab opens **System Settings**. Set **Wake for network access** under **Battery > Options**
+(laptops) or **Energy** (desktops), where available. macOS does not provide these per-device arm/disarm
+lists. See [Apple's sleep and wake settings](https://support.apple.com/guide/mac-help/set-sleep-and-wake-settings-mchle41a6ccd/mac).
 
 ## Installing
 
@@ -86,17 +113,27 @@ Select an entry, then choose an action from the toolbar above the list. Its butt
 
 | Button | What it does |
 | --- | --- |
-| Reboot &rsaquo; **Now (graceful)**, **Now (forced)**, **Delayed** | The restart actions your operating system supports. |
-| Sleep &rsaquo; **Sleep**, **Hibernate** | Suspend to memory or to disk. Hibernate is hidden on macOS, which has no separate action for it. |
+| Reboot &rsaquo; **Graceful**, **Forced**, **Delayed** | The restart actions your operating system supports. |
+| Sleep &rsaquo; **Sleep**, **Hibernate** | Suspend to memory or to disk. Windows keeps unavailable Hibernate clickable with light-gray text. Hibernate is hidden on macOS, which has no separate action for it. |
 | Shutdown &rsaquo; **Hybrid**, **Full** | Power off. On Windows a plain shutdown keeps the hybrid boot cache; **Full** skips it for a true cold start and exists on Windows only. |
 | UEFI &rsaquo; **Refresh** | Re-reads the current state from the firmware. |
 | UEFI &rsaquo; **Next Boot** | Boots the selected entry **once**. Afterwards your computer goes back to the default on its own. Use this to start another operating system a single time. |
 | UEFI &rsaquo; **Default** | Makes the selected entry the **permanent** default, used for every boot until you change it again. |
 | UEFI &rsaquo; **UEFI Setup** | Your computer opens its UEFI/BIOS setup screen the next time it starts, so you don't have to catch the right key during startup. On Windows this only arms the request and does **not** restart now. On Linux the only supported mechanism restarts the machine, so a countdown appears first and gives you time to save your work. |
 | Information &rsaquo; **?**, **About** | Why an entry may be missing from the list, and the version, license and third-party notices. |
+| Logoff &rsaquo; **Logoff** | Signs out the current desktop session without rebooting. Save your work first. Linux terminates session applications without prompting; the section is hidden if the session ID is unavailable. |
 
 Every button's tooltip shows the exact command or API call it runs, so you can check or reproduce it
 yourself.
+
+On Windows, **Sleep** calls the native suspend API directly with hibernation disabled and wake events
+enabled. It does not launch a terminal or run a reboot command.
+
+Windows hibernation availability is checked without administrator rights. If unavailable, clicking
+**Hibernate** offers administrators a confirmation to enable it; other users receive an error.
+Enabling does not immediately hibernate. The chevron beside **Hibernate** offers **Disable Hibernate**,
+which also requires administrator rights and confirmation. Disabling removes the hibernation file
+and disables Fast Startup and hybrid sleep. Neither operation automatically requests elevation.
 
 The toolbar distinguishes two ways to restart:
 

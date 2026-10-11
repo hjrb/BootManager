@@ -63,6 +63,10 @@
 			<Setter Property="Margin" Value="0,0,2,2" />
 		</Style>
 
+		<Style Selector="Border.toolbar Button.unavailable">
+			<Setter Property="Foreground" Value="LightGray" />
+		</Style>
+
 		<!-- Zebra striping uses a translucent grey so it works in either system theme. -->
 		<Style Selector="ItemsControl.infoRows ContentPresenter:nth-child(2n) > Border">
 			<Setter Property="Background" Value="#18808080" />
@@ -130,7 +134,18 @@
 									</ItemsControl.ItemsPanel>
 									<ItemsControl.ItemTemplate>
 										<DataTemplate x:DataType="models:PowerActionItem">
-											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+											<StackPanel Orientation="Horizontal">
+												<Button Content="{Binding Label}" Classes.unavailable="{Binding IsUnavailable}"
+														ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+												<Button Content="&#x25BE;" Width="26" Padding="4,5" IsVisible="{Binding HasHibernateMenu}"
+														ToolTip.Tip="Hibernation settings" AutomationProperties.Name="Hibernation settings">
+													<Button.Flyout>
+														<MenuFlyout>
+															<MenuItem Header="Disable Hibernate" Click="OnDisableHibernateClick" />
+														</MenuFlyout>
+													</Button.Flyout>
+												</Button>
+											</StackPanel>
 										</DataTemplate>
 									</ItemsControl.ItemTemplate>
 								</ItemsControl>
@@ -154,6 +169,21 @@
 							</StackPanel>
 
 							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasPowerActions}" />
+							<StackPanel IsVisible="{Binding HasLogoffActions}">
+								<TextBlock Text="Logoff" Classes="toolGroupHeader" />
+								<ItemsControl ItemsSource="{Binding LogoffActions}">
+									<ItemsControl.ItemsPanel>
+										<ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+									</ItemsControl.ItemsPanel>
+									<ItemsControl.ItemTemplate>
+										<DataTemplate x:DataType="models:PowerActionItem">
+											<Button Content="{Binding Label}" ToolTip.Tip="{Binding Tooltip}" Click="OnPowerActionClick" />
+										</DataTemplate>
+									</ItemsControl.ItemTemplate>
+									</ItemsControl>
+							</StackPanel>
+
+							<Rectangle Classes="toolSeparator" IsVisible="{Binding HasLogoffActions}" />
 							<StackPanel>
 								<TextBlock Text="UEFI" Classes="toolGroupHeader" />
 								<WrapPanel>
@@ -195,6 +225,49 @@
 							</DataTemplate>
 						</ListBox.ItemTemplate>
 					</ListBox>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Wake Devices" ToolTip.Tip="Configure which devices may wake the computer from sleep or hibernation.">
+				<Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
+					<StackPanel IsVisible="{Binding UsesMacWakeSettings}" Spacing="8">
+						<TextBlock Text="Wake for Network Access" FontWeight="SemiBold" />
+						<Button Content="System Settings" Command="{Binding OpenWakeSettingsCommand}"
+								HorizontalAlignment="Left" ToolTip.Tip="Open macOS System Settings for Energy or Battery options" />
+					</StackPanel>
+					<Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" IsVisible="{Binding WakeDevicesSupported}">
+						<WrapPanel>
+							<Button Content="&#x21BB;" Command="{Binding RefreshWakeDevicesCommand}"
+									ToolTip.Tip="Refresh wake devices" AutomationProperties.Name="Refresh wake devices" />
+							<Button Content="&#x2192;" Command="{Binding ArmWakeDeviceCommand}"
+									ToolTip.Tip="Arm selected device" AutomationProperties.Name="Arm selected device" />
+							<Button Content="&#x2190;" Command="{Binding DisarmWakeDeviceCommand}"
+									ToolTip.Tip="Disarm selected device" AutomationProperties.Name="Disarm selected device" />
+							<ProgressBar Width="100" Height="4" Margin="12,0" IsIndeterminate="True" IsVisible="{Binding IsWakeDeviceBusy}" />
+						</WrapPanel>
+						<TextBlock Grid.Row="1" Text="{Binding WakeDevicePrivilegeMessage}"
+								   IsVisible="{Binding !IsElevated}" TextWrapping="Wrap" Margin="0,8" />
+						<Grid Grid.Row="2" ColumnDefinitions="*,16,*" RowDefinitions="Auto,*" Margin="0,8,0,0">
+							<TextBlock Text="Available Devices" FontWeight="SemiBold" Margin="0,0,0,8" />
+							<TextBlock Grid.Column="2" Text="Armed Devices" FontWeight="SemiBold" Margin="0,0,0,8" />
+							<ListBox Grid.Row="1" ItemsSource="{Binding AvailableWakeDevices}"
+									 SelectedItem="{Binding SelectedAvailableWakeDevice}">
+								<ListBox.ItemTemplate>
+									<DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+								</ListBox.ItemTemplate>
+							</ListBox>
+							<TextBlock Grid.Row="1" Text="No available devices" Margin="12"
+									   IsHitTestVisible="False" IsVisible="{Binding !HasAvailableWakeDevices}" />
+							<ListBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding ArmedWakeDevices}"
+									 SelectedItem="{Binding SelectedArmedWakeDevice}">
+								<ListBox.ItemTemplate>
+									<DataTemplate x:DataType="x:String"><TextBlock Text="{Binding}" TextWrapping="Wrap" /></DataTemplate>
+								</ListBox.ItemTemplate>
+							</ListBox>
+							<TextBlock Grid.Row="1" Grid.Column="2" Text="No armed devices" Margin="12"
+									   IsHitTestVisible="False" IsVisible="{Binding !HasArmedWakeDevices}" />
+						</Grid>
+					</Grid>
 				</Grid>
 			</TabItem>
 

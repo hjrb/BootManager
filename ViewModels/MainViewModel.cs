@@ -59,6 +59,10 @@ public partial class MainViewModel : ViewModelBase
 		}
 
 		_ = RefreshSystemInfoCommand.ExecuteAsync(null);
+		if (WakeDevicesSupported)
+		{
+			_ = RefreshWakeDevicesCommand.ExecuteAsync(null);
+		}
 	}
 
 	/// <summary>The boot entries offered by the firmware, in boot order.</summary>
@@ -69,6 +73,48 @@ public partial class MainViewModel : ViewModelBase
 
 	/// <summary>Diagnostic facts grouped by category for the expandable system information view.</summary>
 	public ObservableCollection<SystemInfoGroup> SystemInfoGroups { get; } = [];
+
+	/// <summary>Devices that can be armed but currently have wake permission disabled.</summary>
+	public ObservableCollection<string> AvailableWakeDevices { get; } = [];
+
+	/// <summary>Devices currently allowed to wake the computer.</summary>
+	public ObservableCollection<string> ArmedWakeDevices { get; } = [];
+
+	/// <summary>Whether any unarmed wake-programmable device is available.</summary>
+	public bool HasAvailableWakeDevices => AvailableWakeDevices.Count > 0;
+
+	/// <summary>Whether any device is currently armed.</summary>
+	public bool HasArmedWakeDevices => ArmedWakeDevices.Count > 0;
+
+	/// <summary>Whether wake-device configuration is supported by this platform.</summary>
+	public bool WakeDevicesSupported => WakeDeviceService.IsSupported;
+
+	/// <summary>Whether wake behavior is managed through macOS System Settings.</summary>
+	public bool UsesMacWakeSettings => OperatingSystem.IsMacOS();
+
+	/// <summary>Describes the privilege needed for wake permission changes.</summary>
+	public string WakeDevicePrivilegeMessage => $"{ElevationService.RequiredPrivilegeName} rights are required to change wake permissions.";
+
+	/// <summary>Opens macOS settings for network wake configuration.</summary>
+	[RelayCommand]
+	private async Task OpenWakeSettingsAsync() => await RunGuardedAsync(WakeDeviceService.OpenMacWakeSettingsAsync);
+
+	/// <summary>The available device selected for arming.</summary>
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(ArmWakeDeviceCommand))]
+	public partial string? SelectedAvailableWakeDevice { get; set; }
+
+	/// <summary>The armed device selected for disarming.</summary>
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(DisarmWakeDeviceCommand))]
+	public partial string? SelectedArmedWakeDevice { get; set; }
+
+	/// <summary>Whether a wake-device query or change is in progress.</summary>
+	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(RefreshWakeDevicesCommand))]
+	[NotifyCanExecuteChangedFor(nameof(ArmWakeDeviceCommand))]
+	[NotifyCanExecuteChangedFor(nameof(DisarmWakeDeviceCommand))]
+	public partial bool IsWakeDeviceBusy { get; set; }
 
 	/// <summary>
 	/// The help text of the command line interface, shown verbatim on the "Command Line" tab.
@@ -89,6 +135,8 @@ public partial class MainViewModel : ViewModelBase
 	/// </summary>
 	[ObservableProperty]
 	[NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
+	[NotifyCanExecuteChangedFor(nameof(ArmWakeDeviceCommand))]
+	[NotifyCanExecuteChangedFor(nameof(DisarmWakeDeviceCommand))]
 	public partial bool IsElevated { get; set; } = true;
 
 	/// <summary>Explains the consequences of missing privileges; shown in the warning banner.</summary>
@@ -106,6 +154,12 @@ public partial class MainViewModel : ViewModelBase
 
 	/// <summary>Shutdown actions supported by this OS, shown in the toolbar's shutdown section.</summary>
 	public IReadOnlyList<PowerActionItem> ShutdownActions => GetPowerActions(PowerActionCategory.Shutdown);
+
+	/// <summary>Sign-out actions available for the current desktop session.</summary>
+	public IReadOnlyList<PowerActionItem> LogoffActions => GetPowerActions(PowerActionCategory.Logoff);
+
+	/// <summary>Whether the current desktop session can be signed out.</summary>
+	public bool HasLogoffActions => LogoffActions.Count > 0;
 
 	/// <summary>Whether this OS offers any reboot action; hides the toolbar section when it does not.</summary>
 	public bool HasRebootActions => RebootActions.Count > 0;
@@ -156,6 +210,65 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>Whether the current notification reports a failure, which selects its colour.</summary>
 	[ObservableProperty]
 	public partial bool IsNotificationError { get; set; }
+
+	private bool CanRefreshWakeDevices() => WakeDevicesSupported && !IsWakeDeviceBusy;
+	private bool CanArmWakeDevice() => CanRefreshWakeDevices() && IsElevated && SelectedAvailableWakeDevice is not null;
+	private bool CanDisarmWakeDevice() => CanRefreshWakeDevices() && IsElevated && SelectedArmedWakeDevice is not null;
+
+	/// <summary>Refreshes both wake-device lists without changing device permissions.</summary>
+	[RelayCommand(CanExecute = nameof(CanRefreshWakeDevices))]
+	private async Task RefreshWakeDevicesAsync() => await RunWakeDeviceOperationAsync(null, false);
+
+	/// <summary>Allows the selected available device to wake the computer.</summary>
+	[RelayCommand(CanExecute = nameof(CanArmWakeDevice))]
+	private async Task ArmWakeDeviceAsync() => await RunWakeDeviceOperationAsync(SelectedAvailableWakeDevice, true);
+
+	/// <summary>Removes the selected armed device's wake permission.</summary>
+	[RelayCommand(CanExecute = nameof(CanDisarmWakeDevice))]
+	private async Task DisarmWakeDeviceAsync() => await RunWakeDeviceOperationAsync(SelectedArmedWakeDevice, false);
+
+	private async Task RunWakeDeviceOperationAsync(string? deviceName, bool armed)
+	{
+		if (IsWakeDeviceBusy)
+		{
+			return;
+		}
+		IsWakeDeviceBusy = true;
+		try
+		{
+			if (deviceName is not null)
+			{
+				await WakeDeviceService.SetArmedAsync(deviceName, armed);
+				Log.Information("Wake permission for {Device} {State}", deviceName, armed ? "enabled" : "disabled");
+				ShowNotification($"{deviceName}: wake permission {(armed ? "enabled" : "disabled")}.", isError: false);
+			}
+
+			var devices = await WakeDeviceService.GetDevicesAsync();
+			SelectedAvailableWakeDevice = null;
+			SelectedArmedWakeDevice = null;
+			AvailableWakeDevices.Clear();
+			ArmedWakeDevices.Clear();
+			foreach (var device in devices.Available)
+			{
+				AvailableWakeDevices.Add(device);
+			}
+			foreach (var device in devices.Armed)
+			{
+				ArmedWakeDevices.Add(device);
+			}
+		}
+		catch (Exception ex)
+		{
+			Log.Warning(ex, "Wake device operation failed");
+			ShowNotification(ex.Message, isError: true);
+		}
+		finally
+		{
+			IsWakeDeviceBusy = false;
+			OnPropertyChanged(nameof(HasAvailableWakeDevices));
+			OnPropertyChanged(nameof(HasArmedWakeDevices));
+		}
+	}
 
 	/// <summary>Re-reads the boot entries and re-selects the one that will be used for the next boot.</summary>
 	[RelayCommand(CanExecute = nameof(IsElevated))]
@@ -254,6 +367,16 @@ public partial class MainViewModel : ViewModelBase
 	/// <summary>Executes a shutdown or reboot action chosen from the toolbar.</summary>
 	public async Task ExecutePowerActionAsync(PowerActionKind action)
 	{
+		if (action == PowerActionKind.Hibernate && OperatingSystem.IsWindows()
+			&& !SystemPowerService.IsWindowsHibernateAvailable())
+		{
+			ShowNotification(IsElevated
+				? "Hibernate is disabled or unavailable. Enable hibernation before using it."
+				: "Hibernate is disabled or unavailable, and you are not running as Administrator.", isError: true);
+			OnPropertyChanged(nameof(SleepActions));
+			return;
+		}
+
 		if (action == PowerActionKind.DelayedReboot)
 		{
 			return;
@@ -264,6 +387,31 @@ public partial class MainViewModel : ViewModelBase
 			await SystemPowerService.ExecuteAsync(action).ConfigureAwait(false);
 			ShowNotification($"{SystemPowerService.GetFullName(action)} started.", isError: false);
 		});
+	}
+
+	/// <summary>Changes Windows hibernation only when elevated, reporting the outcome and refreshing the toolbar.</summary>
+	/// <param name="enabled">Whether the user confirmed enabling or disabling hibernation.</param>
+	public async Task ConfigureWindowsHibernateAsync(bool enabled)
+	{
+		if (!IsElevated)
+		{
+			ShowNotification("Changing hibernation requires administrator rights. You are not running as Administrator.", isError: true);
+			return;
+		}
+
+		await RunGuardedAsync(async () =>
+		{
+			await SystemPowerService.SetWindowsHibernateEnabledAsync(enabled);
+			if (enabled && !SystemPowerService.IsWindowsHibernateAvailable())
+			{
+				ShowNotification("Hibernation was enabled, but Windows still reports it unavailable on this machine.", isError: true);
+				return;
+			}
+
+			Log.Information("Windows hibernation {State}", enabled ? "enabled" : "disabled");
+			ShowNotification(enabled ? "Hibernation enabled." : "Hibernation disabled.", isError: false);
+		});
+		OnPropertyChanged(nameof(SleepActions));
 	}
 
 	/// <summary>Hides the notification banner.</summary>
