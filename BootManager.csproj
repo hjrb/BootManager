@@ -15,7 +15,7 @@
 	<!-- Read back at runtime by AppInfo for the About window. The release workflow overrides
 		 Version with the git tag; this value is the fallback for local builds. -->
 	<Product>BootManager</Product>
-	<Version>1.0.0</Version>
+	<Version>1.1.0</Version>
 	<Copyright>Copyright 2026 BootManager contributors</Copyright>
   </PropertyGroup>
 
