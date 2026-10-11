@@ -173,4 +173,6 @@ of the default (persistent startup disk).
   `geteuid() == 0` via libc on Linux/macOS) and relaunches elevated on request:
   Windows uses `ProcessStartInfo(Verb = "runas")` (UAC prompt), Linux uses `pkexec` (polkit prompt,
   no TTY needed), macOS uses `osascript ... with administrator privileges` (native password prompt).
-  The main window shows a persistent banner with a restart button when not elevated.
+  The main window shows a persistent banner with a restart button when not elevated. While not
+  elevated the main window does not enumerate boot entries at all - neither on startup nor on demand -
+  and the refresh action explains the missing privileges instead of letting the platform tool fail.

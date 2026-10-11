@@ -46,12 +46,18 @@ public partial class MainViewModel : ViewModelBase
 		IsElevated = ElevationService.IsElevated();
 		if (!IsElevated)
 		{
-			ElevationMessage = $"Not running as {ElevationService.RequiredPrivilegeName}. Enumerating and changing boot options will likely fail.";
+			ElevationMessage = $"Not running as {ElevationService.RequiredPrivilegeName}. Boot options cannot be read or changed until the application is restarted with those privileges.";
 			Log.Information("Application is not running with elevated privileges ({Privilege})", ElevationService.RequiredPrivilegeName);
 		}
 
 		// Fire and forget: the constructor cannot await, and failures are handled inside the command.
-		_ = RefreshCommand.ExecuteAsync(null);
+		// Enumeration is skipped without privileges: it could only fail, and greeting the user with a red
+		// tool error on top of the banner that already explains the situation helps nobody.
+		if (IsElevated)
+		{
+			_ = RefreshCommand.ExecuteAsync(null);
+		}
+
 		_ = RefreshSystemInfoCommand.ExecuteAsync(null);
 	}
 
@@ -135,6 +141,15 @@ public partial class MainViewModel : ViewModelBase
 	[RelayCommand]
 	private async Task RefreshAsync()
 	{
+		// Reading firmware variables is privileged on every platform, so refuse with a clear message
+		// rather than letting the platform tool fail with a cryptic exit code.
+		if (!IsElevated)
+		{
+			Log.Information("Refresh refused: missing {Privilege} privileges", ElevationService.RequiredPrivilegeName);
+			ShowNotification(ElevationMessage, isError: true);
+			return;
+		}
+
 		await RunGuardedAsync(async () =>
 		{
 			Log.Verbose("Refreshing boot entries list");
