@@ -46,7 +46,7 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     The `help` output must support showing the concrete command each power action runs on the current
     operating system, so the text stays accurate per platform instead of describing only one of them.
 11. The actions of the boot options view live in a toolbar above the boot entry list. Its buttons are
-    grouped into labelled sections - UEFI, Reboot, Sleep and Shutdown, separated by a divider - and the
+    grouped into labelled sections - Reboot, Sleep, Shutdown and UEFI, separated by a divider - and the
     toolbar wraps when the window is too narrow to show all sections side by side.
     The power actions supported by the current OS must be reachable as buttons in that toolbar, not
     hidden behind a popup menu:
