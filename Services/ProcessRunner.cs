@@ -66,11 +66,13 @@ public static class ProcessRunner
 	/// <param name="fileName">Executable to start.</param>
 	/// <param name="arguments">One element per argument, passed verbatim to the program.</param>
 	/// <param name="cancellationToken">Aborts the wait if the tool hangs.</param>
+	/// <param name="outputEncoding">Optional encoding for redirected output from tools that do not use the runtime default.</param>
 	/// <returns>The exit code together with the captured standard output and standard error.</returns>
 	public static async Task<ProcessResult> RunAsync(
 		string fileName,
 		IEnumerable<string> arguments,
-		CancellationToken cancellationToken = default)
+		CancellationToken cancellationToken = default,
+		Encoding? outputEncoding = null)
 	{
 		var startInfo = new ProcessStartInfo(fileName)
 		{
@@ -78,6 +80,8 @@ public static class ProcessRunner
 			RedirectStandardError = true,
 			UseShellExecute = false,
 			CreateNoWindow = true,
+			StandardOutputEncoding = outputEncoding,
+			StandardErrorEncoding = outputEncoding,
 		};
 
 		foreach (var argument in arguments)

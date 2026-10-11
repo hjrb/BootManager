@@ -51,19 +51,57 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     to the console of its caller instead of allocating one. A shell consequently does not wait for the
     process; redirection into a file or a pipe is unaffected.
 11. The actions of the boot options view live in a toolbar above the boot entry list. Its buttons are
-    grouped into labelled sections - Reboot, Sleep, Shutdown, UEFI and Information, separated by a
+    grouped into labelled sections - Reboot, Sleep, Shutdown, Logoff, UEFI and Information, separated by a
     divider - and the toolbar wraps when the window is too narrow to show all sections side by side.
     The power actions supported by the current OS must be reachable as buttons in that toolbar, not
     hidden behind a popup menu:
     - Reboot now, **graceful**.
     - Reboot now, **forced**.
     - Delayed reboot (20 seconds, with an on-screen countdown and a cancel button).
-    - Sleep, i.e. suspend to memory.
+    - Sleep, i.e. suspend to memory. On Windows, call the native `SetSuspendState` API with
+      hibernation disabled and wake events enabled, after enabling `SeShutdownPrivilege`.
+      Do not invoke this API through `rundll32`, which expects a different function signature.
     - Hibernate, i.e. suspend to disk; hidden on macOS, which has no separate action for it.
+      On Windows, query `GetPwrCapabilities` without elevation. Keep Hibernate visible and clickable
+      with light-gray text when S4 or the hibernation file is unavailable, or the query fails.
+      Clicking unavailable Hibernate offers elevated users a confirmation to enable hibernation;
+      non-elevated users receive an error explaining that hibernation is disabled and they are not
+      administrators. Enabling does not immediately hibernate. A right-side chevron menu offers
+      Disable Hibernate, requiring elevation and confirmation. Non-elevated users receive an error
+      instead. Both configuration operations must check elevation in the service as well as the UI,
+      without automatically elevating. Refresh the toolbar state after configuration changes.
     - Shutdown.
+    - Logoff in its own toolbar section: sign out the current desktop session without rebooting.
+      Windows uses `shutdown.exe /l` without forcing applications closed; macOS uses the System Events
+      logout request. Linux uses `loginctl terminate-session` with the current `XDG_SESSION_ID`,
+      terminating session applications without prompting. Hide Logoff if the Linux session ID is
+      unknown, and preserve the ID across elevation so only the original desktop session is targeted.
     - Full shutdown on Windows only; hidden on Linux and macOS where the OS does not expose a separate action.
     - Unsupported actions for a given OS must be hidden instead of shown as disabled items.
     - On Linux and macOS, the implementation should still expose the closest equivalent operations that are actually supported by the platform, such as `systemctl reboot`/`poweroff`/`suspend`/`hibernate`, `shutdown -r now`/`shutdown -h now` and `pmset sleepnow`.
+    - A Wake Devices tab immediately after Boot Options lists available wake-programmable devices
+      and currently armed devices on Windows, including supported keyboard, mouse, network and USB
+      devices. Provide refresh, arm and disarm buttons. Refresh after changes, report command errors,
+      and show empty-list states. Changing permissions requires elevation in both the UI and service;
+      never automatically elevate. Use `powercfg /devicequery wake_programmable` and `wake_armed`,
+      and `/deviceenablewake` or `/devicedisablewake` with the exact device name.
+      Decode powercfg output using the Windows OEM code page so localized device names remain intact.
+      Group both lists by Mice, Keyboards, Network, USB/HID and Other, using Windows PnP classes rather
+      than translated name guesses. Preserve exact device labels for configuration. Double-clicking
+      available/armed device rows must invoke the same guarded arm/disarm commands as the buttons;
+      group headings and blank space must never change device permissions.
+      Devices matched by exact name against `powercfg /devicequery wake_from_any` use light-green
+      text, not bold, in both lists. Tooltips explain reported capability without promising waking.
+      Provide an expandable UEFI Wake Support note below the device lists covering USB wake,
+      PCIe/network wake, ErP/Deep Sleep standby-power restrictions, and firmware-specific sleep-state
+      limitations. Recommend consulting the motherboard manual and testing Sleep/Hibernate separately.
+      On Linux, enumerate physical `/sys/devices/**/power/wakeup` attributes without following
+      symlinks. Only enabled/disabled states are configurable. Include device paths in labels,
+      require root for writes, and validate the selected device against fresh enumeration before
+      opening its existing attribute. Changes are temporary; do not install persistent udev or
+      systemd configuration, toggle ACPI sources, or change network driver Wake-on-LAN settings.
+      On macOS, provide a System Settings button for Energy/Battery network-wake settings instead
+      of per-device lists. Do not imply macOS exposes individual device wake permissions.
 12. The application must support two distinct kinds of restart, because the difference decides whether
     unsaved work survives:
     - **Graceful** must route through the operating system mechanism that lets applications ask the
@@ -184,6 +222,9 @@ of the default (persistent startup disk).
   `geteuid() == 0` via libc on Linux/macOS) and relaunches elevated on request:
   Windows uses `ProcessStartInfo(Verb = "runas")` (UAC prompt), Linux uses `pkexec` (polkit prompt,
   no TTY needed), macOS uses `osascript ... with administrator privileges` (native password prompt).
+  Linux explicitly restores `DISPLAY`, `XAUTHORITY`, `WAYLAND_DISPLAY` and `XDG_RUNTIME_DIR` after
+  authentication, since polkit sanitizes the environment. If `XAUTHORITY` is unset, use the caller's
+  existing `~/.Xauthority` file. Do not forward arbitrary environment variables into the root process.
   The main window shows a persistent banner with a restart button when not elevated. While not
   elevated the main window does not enumerate boot entries at all - neither on startup nor on demand -
   and the refresh action explains the missing privileges instead of letting the platform tool fail.

@@ -128,21 +128,26 @@ internal static class WindowsFirmwareVariables
 	/// <exception cref="InvalidOperationException">
 	/// The privilege could not be enabled, almost always because the process is not elevated.
 	/// </exception>
-	internal static void EnableFirmwarePrivilege()
+	internal static void EnableFirmwarePrivilege() => EnablePrivilege(SeSystemEnvironmentName);
+
+	/// <summary>Enables the process privilege required by the Windows suspend API.</summary>
+	internal static void EnableShutdownPrivilege() => EnablePrivilege("SeShutdownPrivilege");
+
+	private static void EnablePrivilege(string privilegeName)
 	{
 		if (!OpenProcessToken(GetCurrentProcess(), TokenAdjustPrivileges | TokenQuery, out var token))
 		{
 			throw new InvalidOperationException(
-				$"Unable to open the process token to enable firmware access (Win32 error {Marshal.GetLastWin32Error()}).");
+				$"Unable to open the process token to enable {privilegeName} (Win32 error {Marshal.GetLastWin32Error()}).");
 		}
 
 		try
 		{
 			// A null system name means: look the privilege up on this machine.
-			if (!LookupPrivilegeValueW(null, SeSystemEnvironmentName, out var luid))
+			if (!LookupPrivilegeValueW(null, privilegeName, out var luid))
 			{
 				throw new InvalidOperationException(
-					$"Unable to look up the {SeSystemEnvironmentName} privilege (Win32 error {Marshal.GetLastWin32Error()}).");
+					$"Unable to look up the {privilegeName} privilege (Win32 error {Marshal.GetLastWin32Error()}).");
 			}
 
 			var privileges = new TokenPrivileges
@@ -158,10 +163,10 @@ internal static class WindowsFirmwareVariables
 				|| Marshal.GetLastWin32Error() != 0)
 			{
 				throw new InvalidOperationException(
-					$"Unable to enable the {SeSystemEnvironmentName} privilege (Win32 error {Marshal.GetLastWin32Error()}). Administrator rights are required.");
+					$"Unable to enable the {privilegeName} privilege (Win32 error {Marshal.GetLastWin32Error()}). The required privilege is not available.");
 			}
 
-			Log.Verbose("Enabled {Privilege} on the current process token", SeSystemEnvironmentName);
+			Log.Verbose("Enabled {Privilege} on the current process token", privilegeName);
 		}
 		finally
 		{
