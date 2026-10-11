@@ -7,6 +7,9 @@ public sealed record WakeDeviceLists(IReadOnlyList<string> Available, IReadOnlyL
 {
 	/// <summary>Device types indexed by the exact device label; unknown devices remain in Other.</summary>
 	public IReadOnlyDictionary<string, string> DeviceTypes { get; init; } = new Dictionary<string, string>();
+
+	/// <summary>Exact device names reported by Windows as capable of waking from any sleep state.</summary>
+	public IReadOnlySet<string> WakeFromAny { get; init; } = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>Queries and configures Windows and Linux device wake permissions without opening a terminal.</summary>
@@ -42,11 +45,13 @@ public static class WakeDeviceService
 
 		var programmable = ParseNames(await RunAsync(["/devicequery", "wake_programmable"]));
 		var armedNames = ParseNames(await RunAsync(["/devicequery", "wake_armed"]));
+		var wakeFromAny = ParseNames(await RunAsync(["/devicequery", "wake_from_any"]));
 		var armed = programmable.Where(name => armedNames.Contains(name, StringComparer.OrdinalIgnoreCase)).ToArray();
 		return new WakeDeviceLists(
 			programmable.Except(armed, StringComparer.OrdinalIgnoreCase).ToArray(), armed)
 		{
 			DeviceTypes = await GetWindowsDeviceTypesAsync(programmable),
+			WakeFromAny = wakeFromAny.ToHashSet(StringComparer.OrdinalIgnoreCase),
 		};
 	}
 

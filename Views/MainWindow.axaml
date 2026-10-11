@@ -20,6 +20,9 @@
 	</Design.DataContext>
 
 	<Window.Styles>
+		<Style Selector="TextBlock.wakeFromAny">
+			<Setter Property="Foreground" Value="LightGreen" />
+		</Style>
 		<Style Selector="TreeView.wakeDevices TreeViewItem">
 			<Setter Property="IsExpanded" Value="True" />
 		</Style>
@@ -237,8 +240,9 @@
 						<TreeDataTemplate x:DataType="models:WakeDeviceGroup" ItemsSource="{Binding Devices}">
 							<TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
 						</TreeDataTemplate>
-						<DataTemplate x:DataType="x:String">
-							<TextBlock Text="{Binding}" TextWrapping="Wrap" />
+						<DataTemplate x:DataType="models:WakeDeviceItem">
+							<TextBlock Text="{Binding Name}" TextWrapping="Wrap" Classes.wakeFromAny="{Binding CanWakeFromAny}"
+									   ToolTip.Tip="{Binding Tooltip}" />
 						</DataTemplate>
 					</Grid.DataTemplates>
 					<StackPanel IsVisible="{Binding UsesMacWakeSettings}" Spacing="8">
@@ -246,7 +250,7 @@
 						<Button Content="System Settings" Command="{Binding OpenWakeSettingsCommand}"
 								HorizontalAlignment="Left" ToolTip.Tip="Open macOS System Settings for Energy or Battery options" />
 					</StackPanel>
-					<Grid Grid.Row="1" RowDefinitions="Auto,Auto,*" IsVisible="{Binding WakeDevicesSupported}">
+					<Grid Grid.Row="1" RowDefinitions="Auto,Auto,*,Auto" IsVisible="{Binding WakeDevicesSupported}">
 						<WrapPanel>
 							<Button Content="&#x21BB;" Command="{Binding RefreshWakeDevicesCommand}"
 									ToolTip.Tip="Refresh wake devices" AutomationProperties.Name="Refresh wake devices" />
@@ -270,6 +274,12 @@
 							<TextBlock Grid.Row="1" Grid.Column="2" Text="No armed devices" Margin="12"
 									   IsHitTestVisible="False" IsVisible="{Binding !HasArmedWakeDevices}" />
 						</Grid>
+						<Expander Grid.Row="3" Header="UEFI Wake Support" Margin="0,8,0,0" HorizontalAlignment="Stretch">
+							<ScrollViewer MaxHeight="130">
+								<TextBlock TextWrapping="Wrap"
+									Text="In UEFI/BIOS, look for USB Wake Support, Resume by USB, or Wake from S3/S4 for keyboards and mice. For network devices, check Wake-on-LAN, Power On by PCI-E, or PME Event Wake Up. ErP/EuP or Deep Sleep may cut standby power to USB ports and network adapters; consult your motherboard manual before changing them. Setting names and supported sleep states vary. An armed device still needs standby power and compatible firmware/driver settings; test Sleep and Hibernate separately." />
+							</ScrollViewer>
+						</Expander>
 					</Grid>
 				</Grid>
 			</TabItem>

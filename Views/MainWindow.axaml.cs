@@ -118,17 +118,17 @@ public partial class MainWindow : Window
 			return;
 		}
 		var item = source as TreeViewItem ?? source.FindAncestorOfType<TreeViewItem>();
-		if (item?.DataContext is not string deviceName)
+		if (item?.DataContext is not WakeDeviceItem device)
 		{
 			return;
 		}
 		if (armed)
 		{
-			viewModel.SelectedAvailableWakeDevice = deviceName;
+			viewModel.SelectedAvailableWakeDevice = device;
 		}
 		else
 		{
-			viewModel.SelectedArmedWakeDevice = deviceName;
+			viewModel.SelectedArmedWakeDevice = device;
 		}
 		var command = armed ? viewModel.ArmWakeDeviceCommand : viewModel.DisarmWakeDeviceCommand;
 		if (command.CanExecute(null))

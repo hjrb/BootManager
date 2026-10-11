@@ -90,6 +90,11 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
       than translated name guesses. Preserve exact device labels for configuration. Double-clicking
       available/armed device rows must invoke the same guarded arm/disarm commands as the buttons;
       group headings and blank space must never change device permissions.
+      Devices matched by exact name against `powercfg /devicequery wake_from_any` use light-green
+      text, not bold, in both lists. Tooltips explain reported capability without promising waking.
+      Provide an expandable UEFI Wake Support note below the device lists covering USB wake,
+      PCIe/network wake, ErP/Deep Sleep standby-power restrictions, and firmware-specific sleep-state
+      limitations. Recommend consulting the motherboard manual and testing Sleep/Hibernate separately.
       On Linux, enumerate physical `/sys/devices/**/power/wakeup` attributes without following
       symlinks. Only enabled/disabled states are configurable. Include device paths in labels,
       require root for writes, and validate the selected device against fresh enumeration before

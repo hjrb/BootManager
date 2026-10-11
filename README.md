@@ -39,11 +39,17 @@ Both lists are grouped by device type: **Mice**, **Keyboards**, **Network**, **U
 for unclassified devices. Double-click an available device to arm it, or an armed device to disarm it.
 Group headings only expand or collapse; double-click changes still require elevated rights.
 Windows grouping uses device classes, not translated names, and preserves the exact device names.
+Devices listed by Windows in `powercfg /devicequery wake_from_any` use light-green text in both lists,
+not bold text. Their tooltips explain the capability; actual waking still depends on firmware,
+device power and driver settings.
 Linux currently identifies network and USB devices from sysfs paths; remaining devices appear in Other.
 
 Keyboard, mouse, network and USB/HID devices appear when their drivers support configurable waking.
 Wake behavior also depends on firmware, driver settings and the sleep or hibernation state. Disarming
 a keyboard or mouse may mean you need the power button to wake the computer.
+Expand **UEFI Wake Support** beneath the device lists for a firmware checklist: USB wake, network/PCIe
+wake, and ErP/Deep Sleep standby-power restrictions. Setting names vary by motherboard; consult its
+manual and test Sleep and Hibernate separately.
 
 On Linux, the same lists expose physical devices with readable `power/wakeup` attributes under
 `/sys/devices`. Labels include their physical paths, and USB product names when available. Arming
