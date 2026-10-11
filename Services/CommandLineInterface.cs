@@ -281,70 +281,68 @@ public static class CommandLineInterface
 	private static int Unreachable() => throw new InvalidOperationException("Unrecognised command.");
 
 	/// <summary>
-	/// Removes the console window that Windows creates for this process when it is started without a
-	/// shell, for example from Explorer or a shortcut.
+	/// Connects this process to the console of whatever started it, so that command output is visible
+	/// there.
 	/// </summary>
 	/// <remarks>
 	/// <para>
-	/// The executable is built for the console subsystem rather than as a GUI application, because that
-	/// is what makes a Windows shell wait for it: a GUI subsystem process gets its prompt back
-	/// immediately, so anything the CLI prints ends up behind the new prompt and the next keystroke
-	/// redraws over it. The price of the console subsystem is that Windows allocates a console of its
-	/// own whenever the program is not started from one - which is exactly the case in GUI mode.
+	/// The executable is built for the GUI subsystem. A console subsystem executable would make Windows
+	/// create a console of its own whenever the program is started without one - from Explorer, a
+	/// shortcut or the task scheduler - and since Windows 11 hosts that console in a separate terminal
+	/// application, the process can no longer hide the window again. The GUI subsystem avoids the
+	/// problem at its root: no console is ever created.
 	/// </para>
 	/// <para>
-	/// The console is only given up when this process is the only one attached to it. Any higher count
-	/// means the console belongs to the shell that started the application, and hiding it would take the
-	/// user's own window away.
+	/// The price is that a shell does not wait for a GUI subsystem process, so an interactive caller
+	/// gets its prompt back before the output arrives. Attaching to the parent's console at least puts
+	/// the output where the caller can see it, and redirection into a file or a pipe is unaffected.
 	/// </para>
 	/// <para>
-	/// It is hidden before being released because <c>FreeConsole</c> alone leaves the empty window on
-	/// screen until the last process detaches. On Linux and macOS there is no such thing, and the
-	/// standard streams are simply inherited, so nothing needs to be done.
+	/// On Linux and macOS the standard streams are simply inherited, so nothing needs to be done.
 	/// </para>
 	/// </remarks>
-	public static void DetachFromOwnConsole()
+	public static void AttachToParentConsole()
 	{
 		if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 		{
 			return;
 		}
 
-		var console = GetConsoleWindow();
-		if (console == IntPtr.Zero)
+		// Redirected streams already have somewhere to go, and attaching would point them at the
+		// console instead, which is the opposite of what the caller asked for.
+		var outputRedirected = Console.IsOutputRedirected;
+		var errorRedirected = Console.IsErrorRedirected;
+		if (outputRedirected && errorRedirected)
 		{
 			return;
 		}
 
-		// A buffer of two is enough: the only distinction that matters is "just us" versus "more".
-		var attachedProcesses = new uint[2];
-		if (GetConsoleProcessList(attachedProcesses, (uint)attachedProcesses.Length) != 1)
+		// Fails when the caller has no console of its own, which is the case for a double-click in
+		// Explorer. There is then nothing to write to, and nothing to be done about it either.
+		if (!AttachConsole(AttachParentProcess))
 		{
 			return;
 		}
 
-		ShowWindow(console, SwHide);
-		FreeConsole();
+		// The streams were bound while this process had no console, so they must be rebuilt around the
+		// one it just joined. Auto-flushing matters because the process may be killed by its own reboot
+		// command before any buffer would be written out.
+		if (!outputRedirected)
+		{
+			Console.SetOut(new StreamWriter(Console.OpenStandardOutput()) { AutoFlush = true });
+		}
+
+		if (!errorRedirected)
+		{
+			Console.SetError(new StreamWriter(Console.OpenStandardError()) { AutoFlush = true });
+		}
 	}
 
-	/// <summary>Value of <c>SW_HIDE</c>: hide the window without activating another one.</summary>
-	private const int SwHide = 0;
+	/// <summary>Value of <c>ATTACH_PARENT_PROCESS</c>: attach to the console of the parent process.</summary>
+	private const uint AttachParentProcess = 0xFFFFFFFF;
 
-	/// <summary>Returns the window handle of the console attached to this process, or zero if there is none.</summary>
-	[DllImport("kernel32.dll")]
-	private static extern IntPtr GetConsoleWindow();
-
-	/// <summary>Fills the buffer with the ids of the processes attached to this console and returns their number.</summary>
-	[DllImport("kernel32.dll")]
-	private static extern uint GetConsoleProcessList(uint[] processList, uint processCount);
-
-	/// <summary>Detaches this process from its console.</summary>
+	/// <summary>Attaches this process to an existing console.</summary>
 	[DllImport("kernel32.dll", SetLastError = true)]
 	[return: MarshalAs(UnmanagedType.Bool)]
-	private static extern bool FreeConsole();
-
-	/// <summary>Changes a window's visibility.</summary>
-	[DllImport("user32.dll")]
-	[return: MarshalAs(UnmanagedType.Bool)]
-	private static extern bool ShowWindow(IntPtr window, int command);
+	private static extern bool AttachConsole(uint processId);
 }

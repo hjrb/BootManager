@@ -45,11 +45,11 @@ sealed class Program
 	{
 		var isCommandLine = CommandLineInterface.IsCommandLineInvocation(args);
 
-		// First statement of the program, so the console Windows may have created for GUI mode is gone
-		// before it can become visible.
-		if (!isCommandLine)
+		// First statement of the program, so everything a command prints lands in the caller's console.
+		// In GUI mode nothing is done at all: the executable is a GUI subsystem one, so there is no console.
+		if (isCommandLine)
 		{
-			CommandLineInterface.DetachFromOwnConsole();
+			CommandLineInterface.AttachToParentConsole();
 		}
 
 		// The configuration provider only understands switch syntax ("--key value", "key=value") and
