@@ -181,5 +181,4 @@ of the default (persistent startup disk).
   no TTY needed), macOS uses `osascript ... with administrator privileges` (native password prompt).
   The main window shows a persistent banner with a restart button when not elevated. While not
   elevated the main window does not enumerate boot entries at all - neither on startup nor on demand -
-  and the toolbar's firmware actions (Refresh and UEFI Setup) are disabled, so the user is told by the
-  banner rather than by a failing platform tool.
+  and the refresh action explains the missing privileges instead of letting the platform tool fail.
