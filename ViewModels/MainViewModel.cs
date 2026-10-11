@@ -88,6 +88,7 @@ public partial class MainViewModel : ViewModelBase
 	/// not flash up before the real check has run.
 	/// </summary>
 	[ObservableProperty]
+	[NotifyCanExecuteChangedFor(nameof(RefreshCommand))]
 	public partial bool IsElevated { get; set; } = true;
 
 	/// <summary>Explains the consequences of missing privileges; shown in the warning banner.</summary>
@@ -157,7 +158,7 @@ public partial class MainViewModel : ViewModelBase
 	public partial bool IsNotificationError { get; set; }
 
 	/// <summary>Re-reads the boot entries and re-selects the one that will be used for the next boot.</summary>
-	[RelayCommand]
+	[RelayCommand(CanExecute = nameof(IsElevated))]
 	private async Task RefreshAsync()
 	{
 		// Reading firmware variables is privileged on every platform, so refuse with a clear message

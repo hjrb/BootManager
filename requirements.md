@@ -46,8 +46,8 @@ A simple UI application (Avalonia UI, cross-platform: Windows, macOS, Linux) to 
     The `help` output must support showing the concrete command each power action runs on the current
     operating system, so the text stays accurate per platform instead of describing only one of them.
 11. The actions of the boot options view live in a toolbar above the boot entry list. Its buttons are
-    grouped into labelled sections - Reboot, Sleep, Shutdown and UEFI, separated by a divider - and the
-    toolbar wraps when the window is too narrow to show all sections side by side.
+    grouped into labelled sections - Reboot, Sleep, Shutdown, UEFI and Information, separated by a
+    divider - and the toolbar wraps when the window is too narrow to show all sections side by side.
     The power actions supported by the current OS must be reachable as buttons in that toolbar, not
     hidden behind a popup menu:
     - Reboot now, **graceful**.
@@ -181,4 +181,5 @@ of the default (persistent startup disk).
   no TTY needed), macOS uses `osascript ... with administrator privileges` (native password prompt).
   The main window shows a persistent banner with a restart button when not elevated. While not
   elevated the main window does not enumerate boot entries at all - neither on startup nor on demand -
-  and the refresh action explains the missing privileges instead of letting the platform tool fail.
+  and the toolbar's firmware actions (Refresh and UEFI Setup) are disabled, so the user is told by the
+  banner rather than by a failing platform tool.

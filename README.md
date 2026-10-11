@@ -92,7 +92,8 @@ Select an entry, then choose an action from the toolbar above the list. Its butt
 | UEFI &rsaquo; **Refresh** | Re-reads the current state from the firmware. |
 | UEFI &rsaquo; **Next Boot** | Boots the selected entry **once**. Afterwards your computer goes back to the default on its own. Use this to start another operating system a single time. |
 | UEFI &rsaquo; **Default** | Makes the selected entry the **permanent** default, used for every boot until you change it again. |
-| UEFI &rsaquo; **Setup at Next Boot** | Your computer opens its UEFI/BIOS setup screen the next time it starts, so you don't have to catch the right key during startup. On Windows this only arms the request and does **not** restart now. On Linux the only supported mechanism restarts the machine, so a countdown appears first and gives you time to save your work. |
+| UEFI &rsaquo; **UEFI Setup** | Your computer opens its UEFI/BIOS setup screen the next time it starts, so you don't have to catch the right key during startup. On Windows this only arms the request and does **not** restart now. On Linux the only supported mechanism restarts the machine, so a countdown appears first and gives you time to save your work. |
+| Information &rsaquo; **?**, **About** | Why an entry may be missing from the list, and the version, license and third-party notices. |
 
 Every button's tooltip shows the exact command or API call it runs, so you can check or reproduce it
 yourself.

@@ -1,0 +1,17 @@
+{
+	"version": "0.2",
+	"language": "en",
+	// The project dictionary lives in the VS Code settings, so the editor extension and this
+	// configuration cannot drift apart.
+	"import": [".vscode/settings.json"],
+	"ignorePaths": [
+		".git/**",
+		"bin/**",
+		"obj/**",
+		"publish/**",
+		"logs/**",
+		"THIRD-PARTY-NOTICES.md",
+		"LICENSE",
+		"NOTICE"
+	]
+}

@@ -6,11 +6,11 @@
 		xmlns:conv="using:Avalonia.Data.Converters"
 		xmlns:localConv="using:BootManager.Converters"
 		xmlns:models="using:BootManager.Models"
-		mc:Ignorable="d" d:DesignWidth="640" d:DesignHeight="480"
+		mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="480"
 		x:Class="BootManager.Views.MainWindow"
 		x:DataType="vm:MainViewModel"
 		Icon="/Assets/bootmanager.ico"
-		Width="640" Height="480"
+		Width="1280" Height="480"
 		Title="BootManager">
 
 	<Design.DataContext>
@@ -85,15 +85,11 @@
 		</Style>
 	</Window.Styles>
 
-	<Grid RowDefinitions="Auto,Auto,*,Auto" Margin="12">
-		<Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,8">
-			<TextBlock Grid.Column="0" Text="UEFI Boot Options" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"
-					   ToolTip.Tip="Reads and changes the boot entries stored in the firmware's NVRAM." />
-			<Button Grid.Column="1" Content="About" Click="OnAboutButtonClick" ToolTip.Tip="Version, license and third-party notices." />
-		</Grid>
-
-		<Border Grid.Row="1" IsVisible="{Binding !IsElevated}"
-				Background="Goldenrod" Padding="10" CornerRadius="4" Margin="0,0,0,8"
+	<Grid RowDefinitions="Auto,*,Auto" Margin="12">
+		<Border Grid.Row="0" IsVisible="{Binding !IsElevated}"
+				Background="{DynamicResource SystemControlBackgroundBaseLowBrush}"
+				BorderBrush="#30808080" BorderThickness="1"
+				Padding="10" CornerRadius="4" Margin="0,0,0,8"
 				ToolTip.Tip="Firmware variables can only be read and written with elevated privileges.">
 			<Grid ColumnDefinitions="*,Auto">
 				<TextBlock Grid.Column="0" Text="{Binding ElevationMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -102,7 +98,7 @@
 			</Grid>
 		</Border>
 
-		<TabControl Grid.Row="2">
+		<TabControl Grid.Row="1">
 			<TabItem Header="Boot Options" ToolTip.Tip="The boot entries the firmware offers, and the actions that change them.">
 				<Grid RowDefinitions="Auto,*" Margin="0,8,0,0">
 					<Border Grid.Row="0" Classes="toolbar" Margin="0,0,0,8">
@@ -164,9 +160,17 @@
 									<Button Content="Refresh" Command="{Binding RefreshCommand}" ToolTip.Tip="{Binding RefreshTooltip}" />
 									<Button Content="Next Boot" Command="{Binding ApplyNextBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding NextBootTooltip}" />
 									<Button Content="Default" Command="{Binding ApplyDefaultBootCommand}" IsEnabled="{Binding SelectedEntry, Converter={x:Static conv:ObjectConverters.IsNotNull}}" ToolTip.Tip="{Binding DefaultBootTooltip}" />
-									<Button Content="Setup at Next Boot" Click="OnFirmwareSetupButtonClick" ToolTip.Tip="{Binding FirmwareSetupTooltip}" />
+									<Button Content="UEFI Setup" Click="OnFirmwareSetupButtonClick" IsEnabled="{Binding IsElevated}" ToolTip.Tip="{Binding FirmwareSetupTooltip}" />
+								</WrapPanel>
+							</StackPanel>
+
+							<Rectangle Classes="toolSeparator" />
+							<StackPanel>
+								<TextBlock Text="Information" Classes="toolGroupHeader" />
+								<WrapPanel>
 									<Button Content="?" FontWeight="Bold" Click="OnBootEntryHelpClick"
 											ToolTip.Tip="Not everything visible? Click here..." />
+									<Button Content="About" Click="OnAboutButtonClick" ToolTip.Tip="Version, license and third-party notices." />
 								</WrapPanel>
 							</StackPanel>
 						</WrapPanel>
@@ -243,10 +247,10 @@
 			</TabItem>
 		</TabControl>
 
-		<ProgressBar Grid.Row="3" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0"
+		<ProgressBar Grid.Row="2" IsIndeterminate="True" IsVisible="{Binding IsBusy}" Margin="0,8,0,0"
 					 ToolTip.Tip="An operation is running." />
 
-		<Border Grid.Row="0" Grid.RowSpan="4"
+		<Border Grid.Row="0" Grid.RowSpan="3"
 				VerticalAlignment="Bottom"
 				Background="{Binding IsNotificationError, Converter={x:Static localConv:NotificationBrushConverter.Instance}}"
 				IsVisible="{Binding NotificationMessage, Converter={x:Static conv:ObjectConverters.IsNotNull}}"
