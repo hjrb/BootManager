@@ -28,6 +28,25 @@ dotnet build BootManager.csproj -c Release -warnaserror
 
 `-warnaserror` is what CI uses, so a build that is clean here will not fail there.
 
+For local Linux builds with double-click launchers, install PowerShell 7.2 or newer and run
+as your normal user:
+
+```powershell
+pwsh -NoProfile -File ./build.ps1
+```
+
+[build.ps1](build.ps1) builds both Debug and Release with warnings treated as errors.
+Each output folder receives `launch.sh` and `launch-elevated.sh`, plus
+`BootManager.desktop` and `BootManager-elevated.desktop` for double-clicking in your file manager.
+The elevated launcher requires `pkexec` and a running graphical polkit authentication agent;
+it prompts for authentication rather than storing a password. Elevated launches write separate
+log files so they do not prevent normal launches from writing their logs.
+
+The launchers remember the current .NET installation and output paths, so they also work when
+your desktop session does not have `DOTNET_ROOT` configured. Re-run the build script after moving
+the repository or the .NET installation. If your file manager does not trust a launcher automatically,
+use its **Allow Launching** action. Only elevate builds and scripts you trust.
+
 To produce the downloadable builds for every platform:
 
 ```powershell
